@@ -10,6 +10,7 @@ enum class TokenType {
     Number,
     MemoryRef,
     Function,
+    FunctionCall,
     String,
     LBrace,
     RBrace,
@@ -71,7 +72,8 @@ std::string tokenType2String(TokenType type) {
         case TokenType::Symbol: return "シンボル";
         case TokenType::Number: return "数値";
         case TokenType::MemoryRef: return "メモリ参照";
-        case TokenType::Function: return "関数";
+        case TokenType::Function: return "関数宣言";
+        case TokenType::FunctionCall: return "関数呼び出し";
         case TokenType::String: return "文字列";
         case TokenType::LBrace: return "{"; // 左中括弧
         case TokenType::RBrace: return "}"; // 右中括弧
@@ -191,7 +193,7 @@ std::vector<Token> tokenize(const std::string& src) {
             while (pos < src.size() && isdigit(src[pos])) {
                 funcCall += src[pos++];
             }
-            tokens.push_back({TokenType::Function, funcCall, line});
+            tokens.push_back({TokenType::FunctionCall, funcCall, line});
             continue;
         }
 

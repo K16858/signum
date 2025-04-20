@@ -11,6 +11,7 @@ enum class TokenType {
     Number,
     MemoryRef,
     Function,
+    FunctionCall,
     String,
     LBrace,
     RBrace,
