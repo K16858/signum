@@ -70,6 +70,7 @@ class Parser {
 private: 
     std::vector<Token> tokens; // トークンのリスト
     size_t pos = 0; // 解析位置
+    bool hasError = false; // エラーフラグ
 
 public:
     Parser(const std::vector<Token>& tokens) : tokens(tokens) {} // コンストラクタ
@@ -85,6 +86,6 @@ private:
     void advance() { pos++; } // 次のトークンに進む
     void reportError(const std::string& message) { // エラーレポート
         std::cerr << "Error: " << message << " at token " << pos << std::endl;
-        exit(1);
+        hasError = true;
     }
 };

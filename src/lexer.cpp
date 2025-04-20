@@ -27,7 +27,6 @@ enum class TokenType {
     ErrorOutput,
     Comma,
     Colon,
-    Cast,
     Semicolon,
     If,
     ElseIf,
