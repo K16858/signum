@@ -8,7 +8,8 @@
 // トークン
 enum class TokenType {
     Symbol,
-    Number,
+    Integer,
+    Float,
     MemoryRef,
     Function,
     FunctionCall,

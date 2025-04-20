@@ -52,7 +52,7 @@ std::unique_ptr<ASTNode> Parser::parseMemoryRef() {
 }
 
 std::unique_ptr<ASTNode> Parser::parseExpression() {
-    if (tokens[pos].type == TokenType::Number) {
+    if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
         auto node = std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value);
         advance();
         return node;

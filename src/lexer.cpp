@@ -7,7 +7,8 @@
 // トークン
 enum class TokenType {
     Symbol,
-    Number,
+    Integer,
+    Float,
     MemoryRef,
     Function,
     FunctionCall,
@@ -70,7 +71,8 @@ struct Token {
 std::string tokenType2String(TokenType type) {
     switch (type) {
         case TokenType::Symbol: return "シンボル";
-        case TokenType::Number: return "数値";
+        case TokenType::Integer: return "整数値";
+        case TokenType::Float: return "浮動小数点値";
         case TokenType::MemoryRef: return "メモリ参照";
         case TokenType::Function: return "関数宣言";
         case TokenType::FunctionCall: return "関数呼び出し";
@@ -220,10 +222,32 @@ std::vector<Token> tokenize(const std::string& src) {
         // 数字
         if (isdigit(c)) {
             size_t start = pos;
+            bool isFloat = false;
+            
+            // 整数部分を読み取り
             while (pos < src.size() && isdigit(src[pos])) {
                 ++pos;
             }
-            tokens.push_back({TokenType::Number, src.substr(start, pos - start), line});
+            
+            // 小数点があれば小数部分も読み取り
+            if (pos < src.size() && src[pos] == '.') {
+                isFloat = true;
+                ++pos;  // 小数点
+                
+                // 少なくとも1桁は必要
+                if (pos < src.size() && isdigit(src[pos])) {
+                    while (pos < src.size() && isdigit(src[pos])) {
+                        ++pos;
+                    }
+                } 
+                else {
+                    std::cerr << "Error";
+                    return {};
+                }
+            }
+            
+            TokenType type = isFloat ? TokenType::Float : TokenType::Integer;
+            tokens.push_back({type, src.substr(start, pos - start), line});
             continue;
         }
 
