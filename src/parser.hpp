@@ -54,9 +54,17 @@ private:
 public:
     Parser(const std::vector<Token>& tokens) : tokens(tokens) {} // コンストラクタ
 
-    std::unique_ptr<ASTNode> parseCode(); // コード全体を解析
+    std::unique_ptr<ASTNode> parseProgram(); // コード全体を解析
     std::unique_ptr<ASTNode> parseFunction(); // 関数の解析
     std::unique_ptr<ASTNode> parseStatement(); // ステートメントの解析
     std::unique_ptr<ASTNode> parseExpression(); // 式の解析
     std::unique_ptr<ASTNode> parseMemoryRef(); // メモリ参照の解析
+
+private:
+    Token& getToken() { return tokens[pos]; } // 現在のトークンを取得
+    void advance() { pos++; } // 次のトークンに進む
+    void reportError(const std::string& message) { // エラーレポート
+        std::cerr << "Error: " << message << " at token " << pos << std::endl;
+        exit(1);
+    }
 };
