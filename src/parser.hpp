@@ -33,6 +33,16 @@ struct ASTNode {
 
     ASTNode(NodeType type, const std::string& value = "") : type(type), value(value) {} // コンストラクタ
     virtual ~ASTNode() = default; // デストラクタ
+
+    // デバッグ用
+    void print(int indent = 0) const {
+        for (int i = 0; i < indent; i++) std::cout << "  ";
+        std::cout << "ノード: " << static_cast<int>(type) << ", 値: " << value << std::endl;
+        
+        for (const auto& child : children) {
+            child->print(indent + 1);
+        }
+    }
 };
 
 // 構文解析器
