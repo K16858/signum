@@ -10,6 +10,7 @@ enum class TokenType {
     Symbol,
     Integer,
     Float,
+    Boolean,
     MemoryRef,
     Function,
     FunctionCall,

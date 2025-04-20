@@ -9,6 +9,7 @@ enum class TokenType {
     Symbol,
     Integer,
     Float,
+    Boolean,
     MemoryRef,
     Function,
     FunctionCall,
@@ -73,6 +74,7 @@ std::string tokenType2String(TokenType type) {
         case TokenType::Symbol: return "シンボル";
         case TokenType::Integer: return "整数値";
         case TokenType::Float: return "浮動小数点値";
+        case TokenType::Boolean: return "ブール値";
         case TokenType::MemoryRef: return "メモリ参照";
         case TokenType::Function: return "関数宣言";
         case TokenType::FunctionCall: return "関数呼び出し";
@@ -444,6 +446,10 @@ std::vector<Token> tokenize(const std::string& src) {
             case '%':
                 if (pos + 1 < src.size() && src[pos + 1] == ':') {
                     tokens.push_back({TokenType::BoolCast, "%:", line});
+                    pos += 2;
+                }
+                else if (pos + 1 < src.size() && (src[pos + 1] == '0' || src[pos + 1] == '1')) {
+                    tokens.push_back({TokenType::Boolean, src.substr(pos, 2), line});
                     pos += 2;
                 } 
                 else {
