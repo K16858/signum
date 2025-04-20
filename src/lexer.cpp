@@ -88,9 +88,18 @@ std::string parseMemoryRef(const std::string& src, size_t& pos) {
 // 字句解析関数
 std::vector<Token> tokenize(const std::string& src) {
     std::vector<Token> tokens;
-    size_t pos = 0;
+    size_t pos = 0; // 解析位置
+    size_t line = 1; // 行番号
+
     while (pos < src.size()) {
         char c = src[pos];
+
+        // 改行を検出
+        if (c == '\n') {
+            ++line;
+            ++pos;
+            continue;
+        }
         // 空白をスキップ
         if (isspace(c)) {
             ++pos;
@@ -104,8 +113,8 @@ std::vector<Token> tokenize(const std::string& src) {
                 ++pos;
             }
             if (pos < src.size()) {
-                tokens.push_back({TokenType::String, src.substr(start, pos - start)});
-                ++pos; // Skip closing quote
+                tokens.push_back({TokenType::String, src.substr(start, pos - start), line});
+                ++pos; // '"' をスキップ
             } 
             else {
                 std::cerr << "Error: Unmatched double quote\n";
@@ -122,7 +131,7 @@ std::vector<Token> tokenize(const std::string& src) {
             while (pos < src.size() && isdigit(src[pos])) {
                 funcCall += src[pos++];
             }
-            tokens.push_back({TokenType::Function, funcCall});
+            tokens.push_back({TokenType::Function, funcCall, line});
             continue;
         }
 
@@ -130,7 +139,7 @@ std::vector<Token> tokenize(const std::string& src) {
         if (src[pos] == '$') {
             size_t startPos = pos;
             std::string memref = parseMemoryRef(src, pos);
-            tokens.push_back({TokenType::MemoryRef, memref});
+            tokens.push_back({TokenType::MemoryRef, memref, line});
             continue;
         }
 
@@ -142,7 +151,7 @@ std::vector<Token> tokenize(const std::string& src) {
             while (pos < src.size() && isdigit(src[pos])) {
                 funcid += src[pos++];
             }
-            tokens.push_back({TokenType::Function, funcid});
+            tokens.push_back({TokenType::Function, funcid, line});
             continue;
         }
 
@@ -152,60 +161,60 @@ std::vector<Token> tokenize(const std::string& src) {
             while (pos < src.size() && isdigit(src[pos])) {
                 ++pos;
             }
-            tokens.push_back({TokenType::Number, src.substr(start, pos - start)});
+            tokens.push_back({TokenType::Number, src.substr(start, pos - start), line});
             continue;
         }
 
         // 記号系
         switch (c) {
             case '{':
-                tokens.push_back({TokenType::LBrace, "{"});
+                tokens.push_back({TokenType::LBrace, "{", line});
                 ++pos;
                 break;
             case '}':
-                tokens.push_back({TokenType::RBrace, "}"});
+                tokens.push_back({TokenType::RBrace, "}", line});
                 ++pos;
                 break;
             case '(':
-                tokens.push_back({TokenType::LParen, "("});
+                tokens.push_back({TokenType::LParen, "(", line});
                 ++pos;
                 break;
             case ')':
-                tokens.push_back({TokenType::RParen, ")"});
+                tokens.push_back({TokenType::RParen, ")", line});
                 ++pos;
                 break;
             case '[':
-                tokens.push_back({TokenType::LBracket, "["});
+                tokens.push_back({TokenType::LBracket, "[", line});
                 ++pos;
                 break;
             case ']':
-                tokens.push_back({TokenType::RBracket, "]"});
+                tokens.push_back({TokenType::RBracket, "]", line});
                 ++pos;
                 break;
             case ',':
-                tokens.push_back({TokenType::Comma, ","});
+                tokens.push_back({TokenType::Comma, ",", line});
                 ++pos;
                 break;
             case ';':
-                tokens.push_back({TokenType::Semicolon, ";"});
+                tokens.push_back({TokenType::Semicolon, ";", line});
                 ++pos;
                 break;
             case ':':
-                tokens.push_back({TokenType::Colon, ":"});
+                tokens.push_back({TokenType::Colon, ":", line});
                 ++pos;
                 break;
             case '&':
                 if (pos + 1 < src.size()) {
                     if (src[pos + 1] == '(') {
-                        tokens.push_back({TokenType::If, "&"});
+                        tokens.push_back({TokenType::If, "&", line});
                         ++pos;  // & を処理
                     } 
                     else if (src[pos + 1] == '{') {
-                        tokens.push_back({TokenType::Loop, "&{"});
+                        tokens.push_back({TokenType::Loop, "&{", line});
                         pos += 2;
                     } 
                     else if (src[pos + 1] == '&') {
-                        tokens.push_back({TokenType::And, "&&"});
+                        tokens.push_back({TokenType::And, "&&", line});
                         pos += 2;
                     }
                     else {
@@ -219,16 +228,16 @@ std::vector<Token> tokenize(const std::string& src) {
                     if (src[pos + 1] == '?') {
                         // ??
                         if (pos + 2 < src.size() && src[pos + 2] == '?') {
-                            tokens.push_back({TokenType::Else, "???"});
+                            tokens.push_back({TokenType::Else, "???", line});
                             pos += 3;
                         } 
                         else {
-                            tokens.push_back({TokenType::ElseIf, "??"});
+                            tokens.push_back({TokenType::ElseIf, "??", line});
                             pos += 2;
                         }
                     } 
                     else if (src[pos + 1] == '(' || src[pos + 1] == '{') {
-                        tokens.push_back({TokenType::If, "?"});
+                        tokens.push_back({TokenType::If, "?", line});
                         ++pos;
                     } 
                     else {
@@ -239,125 +248,125 @@ std::vector<Token> tokenize(const std::string& src) {
                 break;
             case '<':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::LessThanOrEqual, "<="});
+                    tokens.push_back({TokenType::LessThanOrEqual, "<=", line});
                     pos += 2;
                 } 
                 else if (pos + 1 < src.size() && src[pos + 1] == '<') {
-                    tokens.push_back({TokenType::DoubleLAngleBracket, "<<"});
+                    tokens.push_back({TokenType::DoubleLAngleBracket, "<<", line});
                     pos += 2;
                 } 
                 else if (pos + 1 < src.size() && src[pos + 1] == '!') {
-                    tokens.push_back({TokenType::ErrorOutput, "<!"});
+                    tokens.push_back({TokenType::ErrorOutput, "<!", line});
                     pos += 2;
                 }
                 else {
-                    tokens.push_back({TokenType::LAngleBracket, "<"});
+                    tokens.push_back({TokenType::LAngleBracket, "<", line});
                     ++pos;
                 }
                 break;
             case '>':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::GreaterThanOrEqual, ">="});
+                    tokens.push_back({TokenType::GreaterThanOrEqual, ">=", line});
                     pos += 2;
                 } 
                 else if (pos + 1 < src.size() && src[pos + 1] == '>') {
-                    tokens.push_back({TokenType::DoubleRAngleBracket, ">>"});
+                    tokens.push_back({TokenType::DoubleRAngleBracket, ">>", line});
                     pos += 2;
                 }
                 else {
-                    tokens.push_back({TokenType::RAngleBracket, ">"});
+                    tokens.push_back({TokenType::RAngleBracket, ">", line});
                     ++pos;
                 }
                 break;
             case '=':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::EqualTo, "=="});
+                    tokens.push_back({TokenType::EqualTo, "==", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Assign, "="});
+                    tokens.push_back({TokenType::Assign, "=", line});
                     ++pos;
                 }
                 break;
             case '+':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::PlusEqual, "+="});
+                    tokens.push_back({TokenType::PlusEqual, "+=", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Plus, "+"});
+                    tokens.push_back({TokenType::Plus, "+", line});
                     ++pos;
                 }
                 break;
             case '-':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::MinusEqual, "-="});
+                    tokens.push_back({TokenType::MinusEqual, "-=", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Minus, "-"});
+                    tokens.push_back({TokenType::Minus, "-", line});
                     ++pos;
                 }
                 break;
             case '*':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::MultiplyEqual, "*="});
+                    tokens.push_back({TokenType::MultiplyEqual, "*=", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Multiply, "*"});
+                    tokens.push_back({TokenType::Multiply, "*", line});
                     ++pos;
                 }
                 break;
             case '/':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::DivideEqual, "/="});
+                    tokens.push_back({TokenType::DivideEqual, "/=", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Divide, "/"});
+                    tokens.push_back({TokenType::Divide, "/", line});
                     ++pos;
                 }
                 break;
             case '#':
                 if (pos + 1 < src.size() && src[pos + 1] == ':') {
-                    tokens.push_back({TokenType::IntCast, "#:"});
+                    tokens.push_back({TokenType::IntCast, "#:", line});
                     pos += 2;
                 } else {
-                    tokens.push_back({TokenType::Hash, "#"});
+                    tokens.push_back({TokenType::Hash, "#", line});
                     ++pos;
                 }
                 break;
             case '@':
                 if (pos + 1 < src.size() && src[pos + 1] == ':') {
-                    tokens.push_back({TokenType::StrCast, "@:"});
+                    tokens.push_back({TokenType::StrCast, "@:", line});
                     pos += 2;
                 } else {
-                    tokens.push_back({TokenType::At, "@"});
+                    tokens.push_back({TokenType::At, "@", line});
                     ++pos;
                 }
                 break;
             case '~':
                 if (pos + 1 < src.size() && src[pos + 1] == ':') {
-                    tokens.push_back({TokenType::FloatCast, "~:"});
+                    tokens.push_back({TokenType::FloatCast, "~:", line});
                     pos += 2;
                 } else {
-                    tokens.push_back({TokenType::Tilde, "~"});
+                    tokens.push_back({TokenType::Tilde, "~", line});
                     ++pos;
                 }
                 break;
             case '%':
                 if (pos + 1 < src.size() && src[pos + 1] == ':') {
-                    tokens.push_back({TokenType::BoolCast, "%:"});
+                    tokens.push_back({TokenType::BoolCast, "%:", line});
                     pos += 2;
                 } 
                 else {
                     if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                        tokens.push_back({TokenType::ModulusEqual, "%="});
+                        tokens.push_back({TokenType::ModulusEqual, "%=", line});
                         pos += 2;
                     } 
                     else {
-                        tokens.push_back({TokenType::Modulus, "%"});
+                        tokens.push_back({TokenType::Modulus, "%", line});
                         ++pos;
                     }
                 }
@@ -365,7 +374,7 @@ std::vector<Token> tokenize(const std::string& src) {
 
             case '|':
                 if (pos + 1 < src.size() && src[pos + 1] == '|') {
-                    tokens.push_back({TokenType::Or, "||"});
+                    tokens.push_back({TokenType::Or, "||", line});
                     pos += 2;
                 } 
                 else {
@@ -375,11 +384,11 @@ std::vector<Token> tokenize(const std::string& src) {
                 break;
             case '!':
                 if (pos + 1 < src.size() && src[pos + 1] == '=') {
-                    tokens.push_back({TokenType::NotEqualTo, "!="});
+                    tokens.push_back({TokenType::NotEqualTo, "!=", line});
                     pos += 2;
                 } 
                 else {
-                    tokens.push_back({TokenType::Not, "!"});
+                    tokens.push_back({TokenType::Not, "!", line});
                     ++pos;
                 }
                 break;
@@ -390,7 +399,7 @@ std::vector<Token> tokenize(const std::string& src) {
                     while (pos < src.size() && (isalnum(src[pos]) || src[pos] == '_')) {
                         symbol += src[pos++];
                     }
-                    tokens.push_back({TokenType::Symbol, symbol});
+                    tokens.push_back({TokenType::Symbol, symbol, line});
                 } 
                 else {
                     std::cerr << "Error: Unknown character '" << c << "'\n";
@@ -401,7 +410,7 @@ std::vector<Token> tokenize(const std::string& src) {
     }
 
     // 終端トークンを追加
-    tokens.push_back({TokenType::End, ""});
+    tokens.push_back({TokenType::End, "", line});
     return tokens;
 }
 
@@ -439,7 +448,7 @@ int main() {
     
     std::cout << "トークン解析結果：\n";
     for (const auto& token : tokens) {
-        std::cout << "タイプ: " << static_cast<int>(token.type) << ", 値: \"" << token.value << "\"\n";
+        std::cout << "タイプ: " << static_cast<int>(token.type) << ", 値: \"" << token.value << ", 行: \"" << token.line << "\"\n";
     }
     return 0;
 }
