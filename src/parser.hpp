@@ -25,6 +25,26 @@ enum class NodeType {
     IOStatement,
 };
 
+inline std::string nodeType2String(NodeType type) {
+    switch (type) {
+        case NodeType::Program: return "プログラム";
+        case NodeType::Function: return "関数";
+        case NodeType::Statement: return "文";
+        case NodeType::Expression: return "式";
+        case NodeType::MemoryRef: return "メモリ参照";
+        case NodeType::Number: return "数値";
+        case NodeType::String: return "文字列";
+        case NodeType::Symbol: return "シンボル";
+        case NodeType::Operator: return "演算子";
+        case NodeType::Cast: return "型変換";
+        case NodeType::IfStatement: return "条件分岐";
+        case NodeType::LoopStatement: return "ループ";
+        case NodeType::Assignment: return "代入";
+        case NodeType::IOStatement: return "入出力";
+        default: return "不明";
+    }
+}
+
 // ASTノード
 struct ASTNode {
     NodeType type; // ノードの種類
@@ -44,26 +64,6 @@ struct ASTNode {
         }
     }
 };
-
-std::string nodeType2String(NodeType type) {
-    switch (type) {
-        case NodeType::Program: return "プログラム";
-        case NodeType::Function: return "関数";
-        case NodeType::Statement: return "文";
-        case NodeType::Expression: return "式";
-        case NodeType::MemoryRef: return "メモリ参照";
-        case NodeType::Number: return "数値";
-        case NodeType::String: return "文字列";
-        case NodeType::Symbol: return "シンボル";
-        case NodeType::Operator: return "演算子";
-        case NodeType::Cast: return "型変換";
-        case NodeType::IfStatement: return "条件分岐";
-        case NodeType::LoopStatement: return "ループ";
-        case NodeType::Assignment: return "代入";
-        case NodeType::IOStatement: return "入出力";
-        default: return "不明";
-    }
-}
 
 // 構文解析器
 class Parser {

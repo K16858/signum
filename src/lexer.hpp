@@ -25,7 +25,6 @@ enum class TokenType {
     ErrorOutput,
     Comma,
     Colon,
-    Cast,
     Semicolon,
     If,
     ElseIf,
@@ -67,6 +66,7 @@ struct Token {
     size_t line = 0; // 行番号
 };
 
+std::string tokenType2String(TokenType type);
 std::string parseMemoryRef(const std::string& src, size_t& pos);
 std::vector<Token> tokenize(const std::string& src);
 void printTokens(const std::vector<Token>& tokens);
