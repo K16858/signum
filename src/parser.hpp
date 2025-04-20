@@ -31,6 +31,7 @@ struct ASTNode {
     std::string value; // ノードの値
     std::vector<std::unique_ptr<ASTNode>> children; // 子ノードのリスト
 
+    ASTNode(NodeType type, const std::string& value = "") : type(type), value(value) {} // コンストラクタ
     virtual ~ASTNode() = default; // デストラクタ
 };
 
