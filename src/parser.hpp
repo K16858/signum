@@ -4,11 +4,33 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <memory>
 #include "lexer.hpp"
+
+// ASTノードの種類
+enum class NodeType {
+    Program,
+    Function,
+    Statement,
+    Expression,
+    MemoryRef,
+    Number,
+    String,
+    Symbol,
+    Operator,
+    Cast,
+    IfStatement,
+    LoopStatement,
+    Assignment,
+    IOStatement,
+};
 
 // ASTノード
 struct ASTNode {
-    std::string value;
-    std::vector<ASTNode> children;
+    NodeType type; // ノードの種類
+    std::string value; // ノードの値
+    std::vector<std::unique_ptr<ASTNode>> children; // 子ノードのリスト
+
+    virtual ~ASTNode() = default; // デストラクタ
 };
 
