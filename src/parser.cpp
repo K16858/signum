@@ -1,3 +1,4 @@
+// SigNum Parser
 #include "parser.hpp"
 
 std::unique_ptr<ASTNode> Parser::parseProgram() {
@@ -22,7 +23,39 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
             advance();
         }
-        
+
         return node;
     }
+
+
+
+    reportError("Unsupported statement type");
+    return nullptr;
+}
+
+std::unique_ptr<ASTNode> Parser::parseMemoryRef() {
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto node = std::make_unique<ASTNode>(NodeType::MemoryRef, tokens[pos].value);
+        advance();
+        return node;
+    }
+
+    reportError("Error: Expected memory reference");
+    return nullptr;
+}
+
+std::unique_ptr<ASTNode> Parser::parseExpression() {
+    if (tokens[pos].type == TokenType::Number) {
+        auto node = std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value);
+        advance();
+        return node;
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        auto node = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
+        advance();
+        return node;
+    }
+
+    reportError("Error: Expected expression");
+    return nullptr;
 }
