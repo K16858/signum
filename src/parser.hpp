@@ -80,6 +80,11 @@ public:
     std::unique_ptr<ASTNode> parseStatement(); // ステートメントの解析
     std::unique_ptr<ASTNode> parseExpression(); // 式の解析
     std::unique_ptr<ASTNode> parseMemoryRef(); // メモリ参照の解析
+    std::unique_ptr<ASTNode> parseIfStatement(); // 条件分岐の解析
+    std::unique_ptr<ASTNode> parseLoopStatement(); // ループの解析
+    std::unique_ptr<ASTNode> parseAssignment(); // 代入文の解析
+    std::unique_ptr<ASTNode> parseIOStatement(); // 入出力文の解析
+    std::unique_ptr<ASTNode> parseCast(); // 型変換の解析
 
 private:
     Token& getToken() { return tokens[pos]; } // 現在のトークンを取得
