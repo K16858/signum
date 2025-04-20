@@ -5,6 +5,13 @@ std::unique_ptr<ASTNode> Parser::parseProgram() {
     auto node = std::make_unique<ASTNode>(NodeType::Program);
 
     while (pos < tokens.size()) {
+        if (tokens[pos].type == TokenType::End) {
+            break; // 終端トークンに到達
+        }
+        if (tokens[pos].type == TokenType::Semicolon) {
+            advance(); // セミコロンをスキップ
+            continue;
+        }
         node->children.push_back(parseStatement());
     }
 
