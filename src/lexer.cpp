@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+// トークン
 enum class TokenType {
     Symbol,
     Number,
@@ -56,6 +57,7 @@ enum class TokenType {
     End,
 };
 
+// トークン構造体
 struct Token {
     TokenType type;
     std::string value;
@@ -65,9 +67,9 @@ struct Token {
 // メモリ参照を解析
 std::string parseMemoryRef(const std::string& src, size_t& pos) {
     std::string memref = "";
-    memref += src[pos++]; // '$'
+    memref += src[pos++]; // "$"
     
-    if (pos < src.size() && (src[pos] == '#' || src[pos] == '@' || src[pos] == '~' || src[pos] == '%')) {
+    while (pos < src.size() && (src[pos] == '#' || src[pos] == '@' || src[pos] == '~' || src[pos] == '%')) {
         memref += src[pos++]; // 型記号
         
         // ネストされた参照の場合
@@ -448,7 +450,7 @@ int main() {
     
     std::cout << "トークン解析結果：\n";
     for (const auto& token : tokens) {
-        std::cout << "タイプ: " << static_cast<int>(token.type) << ", 値: \"" << token.value << ", 行: \"" << token.line << "\"\n";
+        std::cout << "タイプ: " << static_cast<int>(token.type) << ", 値: \"" << token.value << "\"" << ", 行: \"" << token.line << "\"\n";
     }
     return 0;
 }
