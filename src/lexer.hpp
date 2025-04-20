@@ -1,3 +1,6 @@
+// SigNum Lexer
+#pragma once
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -416,41 +419,10 @@ std::vector<Token> tokenize(const std::string& src) {
     return tokens;
 }
 
-int main() {
-    std::string test_code = R"(
-    _001{
-        ?($#0 % 15 == 0){
-            < "FizzBuzz";
-        }
-        ??($#0 % 3 == 0){
-            < "Fizz";
-        }
-        ??($#0 % 5 == 0){
-            < "Buzz";
-        }
-    }
-
-    _000{
-        $#0 = 1;
-
-        &($#0 <= 100){
-            $_001;
-            $#0 += 1;
-        }
-
-        "FileName" >> $@1;
-        $#1 = #: $@1;
-        $#0 = 0;
-        $#1 = 0;
-        $@$#0#1 = "Hello, Wolrd!";
-        <! "End";
-    }
-    )";
-    auto tokens = tokenize(test_code);
-    
-    std::cout << "トークン解析結果：\n";
+void printTokens(const std::vector<Token>& tokens) {
     for (const auto& token : tokens) {
-        std::cout << "タイプ: " << static_cast<int>(token.type) << ", 値: \"" << token.value << "\"" << ", 行: \"" << token.line << "\"\n";
+        std::cout << "トークン: " << static_cast<int>(token.type) 
+                  << ", 値: " << token.value 
+                  << ", 行: " << token.line << std::endl;
     }
-    return 0;
 }
