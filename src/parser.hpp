@@ -12,8 +12,8 @@ enum class NodeType {
     Program,
     Function,
     Statement,
-    Expression,
-    Term,
+    ArithmeticExpression,
+    LogicalExpression,
     Factor,
     MemoryRef,
     Number,
@@ -34,15 +34,15 @@ inline std::string nodeType2String(NodeType type) {
         case NodeType::Program: return "ルート";
         case NodeType::Function: return "関数定義";
         case NodeType::Statement: return "ステートメント";
-        case NodeType::Expression: return "加減算式";
-        case NodeType::Term: return "乗除算式";
+        case NodeType::ArithmeticExpression: return "四則演算式";
+        case NodeType::LogicalExpression: return "論理式";
         case NodeType::Factor: return "因子";
         case NodeType::MemoryRef: return "メモリ参照";
         case NodeType::Number: return "数値";
         case NodeType::String: return "文字列";
         case NodeType::Symbol: return "シンボル";
         case NodeType::Operator: return "演算子";
-        case NodeType::Comparison: return "比較演算子";
+        case NodeType::Comparison: return "比較演算式";
         case NodeType::Condition: return "条件式";
         case NodeType::Cast: return "型変換";
         case NodeType::IfStatement: return "条件分岐";
