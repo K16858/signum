@@ -292,25 +292,17 @@ std::vector<Token> tokenize(const std::string& src) {
                 break;
             case '&':
                 if (pos + 1 < src.size()) {
-                    if (src[pos + 1] == '(') {
-                        tokens.push_back({TokenType::If, "&", line});
-                        ++pos;  // & を処理
-                    } 
-                    else if (src[pos + 1] == '{') {
-                        tokens.push_back({TokenType::Loop, "&{", line});
-                        pos += 2;
-                    } 
-                    else if (src[pos + 1] == '&') {
+                    if (src[pos + 1] == '&') {
                         tokens.push_back({TokenType::And, "&&", line});
                         pos += 2;
                     }
                     else {
-                        std::cerr << "Error: Unknown character sequence '&" << src[pos + 1] << "'\n";
-                        return {};
+                        tokens.push_back({TokenType::If, "&", line});
+                        ++pos;  // & を処理
                     }
                 }
                 break;
-                case '?':
+            case '?':
                 if (pos + 1 < src.size()) {
                     if (src[pos + 1] == '?') {
                         // ??
@@ -323,14 +315,10 @@ std::vector<Token> tokenize(const std::string& src) {
                             pos += 2;
                         }
                     } 
-                    else if (src[pos + 1] == '(' || src[pos + 1] == '{') {
+                    else {
                         tokens.push_back({TokenType::If, "?", line});
                         ++pos;
                     } 
-                    else {
-                        std::cerr << "Error: Unknown character sequence '?" << src[pos + 1] << "'\n";
-                        return {};
-                    }
                 }
                 break;
             case '<':

@@ -29,7 +29,7 @@ inline std::string nodeType2String(NodeType type) {
     switch (type) {
         case NodeType::Program: return "プログラム";
         case NodeType::Function: return "関数";
-        case NodeType::Statement: return "文";
+        case NodeType::Statement: return "ステートメント";
         case NodeType::Expression: return "式";
         case NodeType::MemoryRef: return "メモリ参照";
         case NodeType::Number: return "数値";

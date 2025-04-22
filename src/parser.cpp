@@ -53,6 +53,7 @@ std::unique_ptr<ASTNode> Parser::parseMemoryRef() {
 
 // 式の解析
 std::unique_ptr<ASTNode> Parser::parseExpression() {
+    std::cout << "式を解析中..." << std::endl;
     if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
         auto node = std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value);
         advance();
@@ -89,7 +90,45 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
 
 // 条件分岐の解析
 std::unique_ptr<ASTNode> Parser::parseIfStatement() {
+    std::cout << "条件分岐を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::IfStatement);
+    advance(); // "if"
+    if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseExpression()); // 条件式
 
+        if (tokens[pos].type != TokenType::RParen) {
+            reportError("Expected ')' after condition in if statement");
+            return nullptr;
+        } 
+        advance(); // ")"
+    } 
+    else {
+        reportError("Expected '(' after 'if'");
+    }
+
+    // thenの解析
+    if (tokens[pos].type == TokenType::LBrace) {
+        advance(); // "{"
+        auto thenNode = std::make_unique<ASTNode>(NodeType::Statement);
+        while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+            thenNode->children.push_back(parseStatement());
+        }
+
+        if (tokens[pos].type != TokenType::RBrace) {
+            reportError("Expected '}' after then block in if statement");
+            return nullptr;
+        }
+        advance(); // "}"
+
+        node->children.push_back(std::move(thenNode)); // thenを追加
+    }
+    else {
+        reportError("Expected '{' after condition in if statement");
+        return nullptr;
+    }
+
+    return node;
 }
 
 // ループの解析
