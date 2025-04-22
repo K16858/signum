@@ -113,7 +113,6 @@ std::unique_ptr<ASTNode> Parser::parseTerm() {
 std::unique_ptr<ASTNode> Parser::parseFactor() {
     std::cout << "因子を解析中..." << std::endl;
     auto node = std::make_unique<ASTNode>(NodeType::Factor);
-    node->children.push_back(std::make_unique<ASTNode>(NodeType::Operator, tokens[pos].value)); // 演算子を追加
 
     if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
         node->children.push_back(std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value));
