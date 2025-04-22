@@ -18,6 +18,8 @@ enum class NodeType {
     String,
     Symbol,
     Operator,
+    Comparison,
+    Condition,
     Cast,
     IfStatement,
     LoopStatement,
@@ -28,7 +30,7 @@ enum class NodeType {
 inline std::string nodeType2String(NodeType type) {
     switch (type) {
         case NodeType::Program: return "プログラム";
-        case NodeType::Function: return "関数";
+        case NodeType::Function: return "関数定義";
         case NodeType::Statement: return "ステートメント";
         case NodeType::Expression: return "式";
         case NodeType::MemoryRef: return "メモリ参照";
@@ -36,6 +38,8 @@ inline std::string nodeType2String(NodeType type) {
         case NodeType::String: return "文字列";
         case NodeType::Symbol: return "シンボル";
         case NodeType::Operator: return "演算子";
+        case NodeType::Comparison: return "比較演算子";
+        case NodeType::Condition: return "条件式";
         case NodeType::Cast: return "型変換";
         case NodeType::IfStatement: return "条件分岐";
         case NodeType::LoopStatement: return "ループ";
@@ -80,6 +84,8 @@ public:
     std::unique_ptr<ASTNode> parseStatement(); // ステートメントの解析
     std::unique_ptr<ASTNode> parseExpression(); // 式の解析
     std::unique_ptr<ASTNode> parseMemoryRef(); // メモリ参照の解析
+    std::unique_ptr<ASTNode> parseCondition(); // 条件式の解析
+    std::unique_ptr<ASTNode> parseComparison(); // 比較演算子の解析
     std::unique_ptr<ASTNode> parseIfStatement(); // 条件分岐の解析
     std::unique_ptr<ASTNode> parseLoopStatement(); // ループの解析
     std::unique_ptr<ASTNode> parseAssignment(); // 代入文の解析

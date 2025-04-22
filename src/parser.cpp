@@ -25,6 +25,28 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
     if (pos + 2 < tokens.size() && tokens[pos+1].type == TokenType::Assign) {
         return parseAssignment();
     }
+    // 比較演算の解析
+    else if (tokens[pos+1].type == TokenType::EqualTo||
+             tokens[pos+1].type == TokenType::NotEqualTo ||
+             tokens[pos+1].type == TokenType::LAngleBracket ||
+             tokens[pos+1].type == TokenType::RAngleBracket ||
+             tokens[pos+1].type == TokenType::LessThanOrEqual ||
+             tokens[pos+1].type == TokenType::GreaterThanOrEqual) {
+        return parseComparison();
+    }
+    // 演算の解析
+    else if (tokens[pos+1].type == TokenType::Plus ||
+             tokens[pos+1].type == TokenType::Minus ||
+             tokens[pos+1].type == TokenType::Multiply ||
+             tokens[pos+1].type == TokenType::Divide) {
+        return parseExpression();
+    }
+    // 条件式の解析
+    else if (tokens[pos].type == TokenType::Not ||
+             tokens[pos].type == TokenType::And ||
+             tokens[pos].type == TokenType::Or) {
+        return parseCondition();
+    }
     // 条件分岐の解析
     else if (tokens[pos].type == TokenType::If) {
         return parseIfStatement();
@@ -85,6 +107,24 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
         advance();
     }
 
+    return node;
+}
+
+std::unique_ptr<ASTNode> Parser::parseComparison() {
+    std::cout << "比較演算を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::Comparison, tokens[pos+1].value);
+    node->children.push_back(parseExpression()); // 左辺の式
+    advance(); // 演算子をスキップ
+    node->children.push_back(parseExpression()); // 右辺の式
+
+    return node;
+}
+
+std::unique_ptr<ASTNode> Parser::parseCondition() {
+    std::cout << "条件式を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::Condition);
+    node->children.push_back(parseExpression());
+    
     return node;
 }
 
