@@ -73,26 +73,75 @@ std::unique_ptr<ASTNode> Parser::parseMemoryRef() {
     return nullptr;
 }
 
-// 式の解析
+// 加減算式の解析
 std::unique_ptr<ASTNode> Parser::parseExpression() {
-    std::cout << "式を解析中..." << std::endl;
-    if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
-        auto node = std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value);
-        advance();
-        return node;
-    } 
-    else if (tokens[pos].type == TokenType::String) {
-        auto node = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
-        advance();
-        return node;
-    }
-    else if (tokens[pos].type == TokenType::MemoryRef) {
-        return parseMemoryRef(); // メモリ参照も式
+    std::cout << "加減算式を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::Expression);
+    node->children.push_back(parseTerm()); // 左辺の項
+
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::Plus || tokens[pos].type == TokenType::Minus)) {
+        auto operatorNode = std::make_unique<ASTNode>(NodeType::Operator, tokens[pos].value);
+        advance(); // 演算子をスキップ
+        operatorNode->children.push_back(std::move(node->children.back()));
+        node->children.pop_back(); // 左辺を削除
+        operatorNode->children.push_back(std::move(parseTerm()));
+        node->children.push_back(std::move(operatorNode));
     }
 
-    reportError("Error: Expected expression");
-    return nullptr;
+    return node;
 }
+
+// 乗除算式の解析
+std::unique_ptr<ASTNode> Parser::parseTerm() {
+    std::cout << "乗除算式を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::Term);
+    node->children.push_back(parseFactor()); // 左辺の式
+
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::Multiply || tokens[pos].type == TokenType::Divide)) {
+        auto operatorNode = std::make_unique<ASTNode>(NodeType::Operator, tokens[pos].value);
+        advance(); // 演算子をスキップ
+        operatorNode->children.push_back(std::move(node->children.back()));
+        node->children.pop_back(); // 取り出した子ノードを削除
+        operatorNode->children.push_back(std::move(parseFactor()));
+        node->children.push_back(std::move(operatorNode));
+    }
+
+    return node;
+}
+
+// 因子の解析
+std::unique_ptr<ASTNode> Parser::parseFactor() {
+    std::cout << "因子を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::Factor);
+    node->children.push_back(std::make_unique<ASTNode>(NodeType::Operator, tokens[pos].value)); // 演算子を追加
+
+    if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
+        node->children.push_back(std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value));
+        advance();
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        node->children.push_back(std::make_unique<ASTNode>(NodeType::String, tokens[pos].value));
+        advance();
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
+        node->children.push_back(parseMemoryRef());
+    } 
+    else if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseExpression()); // 式を解析
+        if (tokens[pos].type != TokenType::RParen) {
+            reportError("Expected ')' after expression in factor");
+            return nullptr;
+        }
+        advance(); // ")"
+    } 
+    else {
+        reportError("Error: Expected factor");
+    }
+
+    return node;
+}
+
 
 // 代入文の解析
 std::unique_ptr<ASTNode> Parser::parseAssignment() {
@@ -114,7 +163,7 @@ std::unique_ptr<ASTNode> Parser::parseComparison() {
     std::cout << "比較演算を解析中..." << std::endl;
     auto node = std::make_unique<ASTNode>(NodeType::Comparison, tokens[pos+1].value);
     node->children.push_back(parseExpression()); // 左辺の式
-    advance(); // 演算子をスキップ
+    advance(); // 比較演算子をスキップ
     node->children.push_back(parseExpression()); // 右辺の式
 
     return node;

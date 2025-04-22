@@ -13,6 +13,8 @@ enum class NodeType {
     Function,
     Statement,
     Expression,
+    Term,
+    Factor,
     MemoryRef,
     Number,
     String,
@@ -29,10 +31,12 @@ enum class NodeType {
 
 inline std::string nodeType2String(NodeType type) {
     switch (type) {
-        case NodeType::Program: return "プログラム";
+        case NodeType::Program: return "ルート";
         case NodeType::Function: return "関数定義";
         case NodeType::Statement: return "ステートメント";
-        case NodeType::Expression: return "式";
+        case NodeType::Expression: return "加減算式";
+        case NodeType::Term: return "乗除算式";
+        case NodeType::Factor: return "因子";
         case NodeType::MemoryRef: return "メモリ参照";
         case NodeType::Number: return "数値";
         case NodeType::String: return "文字列";
@@ -82,7 +86,9 @@ public:
     std::unique_ptr<ASTNode> parseProgram(); // コード全体を解析
     std::unique_ptr<ASTNode> parseFunction(); // 関数の解析
     std::unique_ptr<ASTNode> parseStatement(); // ステートメントの解析
-    std::unique_ptr<ASTNode> parseExpression(); // 式の解析
+    std::unique_ptr<ASTNode> parseExpression(); // 加減算式の解析
+    std::unique_ptr<ASTNode> parseTerm(); // 乗除算式の解析
+    std::unique_ptr<ASTNode> parseFactor(); // 因子の解析
     std::unique_ptr<ASTNode> parseMemoryRef(); // メモリ参照の解析
     std::unique_ptr<ASTNode> parseCondition(); // 条件式の解析
     std::unique_ptr<ASTNode> parseComparison(); // 比較演算子の解析
