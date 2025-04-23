@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <fstream>
 #include "lexer.hpp"
 
 // ASTノードの種類
@@ -71,6 +72,76 @@ struct ASTNode {
         for (const auto& child : children) {
             child->print(indent + 1);
         }
+    }
+
+    std::string toJSON(int indent = 0) const {
+        std::string result = "{\n";
+        std::string indentStr(indent + 2, ' ');
+        std::string indentEndStr(indent, ' ');
+        
+        // タイプ
+        result += indentStr + "\"type\": \"" + nodeType2String(type) + "\",\n";
+        
+        // 値（エスケープ処理）
+        result += indentStr + "\"value\": \"" + escapeJSON(value) + "\"";
+        
+        // 子ノードがあれば追加
+        if (!children.empty()) {
+            result += ",\n" + indentStr + "\"children\": [\n";
+            
+            for (size_t i = 0; i < children.size(); ++i) {
+                result += indentStr + "  " + children[i]->toJSON(indent + 2);
+                if (i < children.size() - 1) {
+                    result += ",";
+                }
+                result += "\n";
+            }
+            
+            result += indentStr + "]\n";
+        } else {
+            result += "\n";
+        }
+        
+        result += indentEndStr + "}";
+        return result;
+    }
+
+    // JSONエスケープ処理
+    static std::string escapeJSON(const std::string& input) {
+        std::string result;
+        for (char c : input) {
+            switch (c) {
+                case '\"': result += "\\\""; break;
+                case '\\': result += "\\\\"; break;
+                case '\b': result += "\\b"; break;
+                case '\f': result += "\\f"; break;
+                case '\n': result += "\\n"; break;
+                case '\r': result += "\\r"; break;
+                case '\t': result += "\\t"; break;
+                default:
+                    if (static_cast<unsigned char>(c) < 0x20) {
+                        char buf[7];
+                        snprintf(buf, sizeof(buf), "\\u%04x", c);
+                        result += buf;
+                    } else {
+                        result += c;
+                    }
+            }
+        }
+        return result;
+    }
+
+    // JSONファイルに保存
+    bool saveToJSONFile(const std::string& filename) const {
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "File cannot open: " << filename << std::endl;
+            return false;
+        }
+        
+        file << toJSON();
+        file.close();
+        return true;
     }
 };
 

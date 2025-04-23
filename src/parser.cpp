@@ -97,7 +97,7 @@ std::unique_ptr<ASTNode> Parser::parseTerm() {
     std::cout << "乗除算式を解析中..." << std::endl;
     auto left = parseFactor(); // 左辺の因子
 
-    if (pos < tokens.size() && (tokens[pos].type == TokenType::Multiply || tokens[pos].type == TokenType::Divide || tokens[pos].type == TokenType::Modulus)) {
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::Multiply || tokens[pos].type == TokenType::Divide || tokens[pos].type == TokenType::Modulus)) {
         auto op = tokens[pos].value;
         advance(); // 演算子をスキップ
         
