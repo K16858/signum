@@ -169,21 +169,54 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
 // 比較演算の解析
 std::unique_ptr<ASTNode> Parser::parseComparison() {
     std::cout << "比較演算を解析中..." << std::endl;
-    auto node = std::make_unique<ASTNode>(NodeType::Comparison, tokens[pos+1].value);
-    node->children.push_back(parseExpression()); // 左辺の式
-    node->value = tokens[pos].value; // 演算子の値を保存
-    advance(); // 比較演算子をスキップ
+    auto left = parseExpression(); // 左辺の式
 
-    node->children.push_back(parseExpression()); // 右辺の式
+    if (pos < tokens.size() && (
+        tokens[pos].type == TokenType::EqualTo ||
+        tokens[pos].type == TokenType::NotEqualTo ||
+        tokens[pos].type == TokenType::LAngleBracket ||
+        tokens[pos].type == TokenType::RAngleBracket ||
+        tokens[pos].type == TokenType::LessThanOrEqual ||
+        tokens[pos].type == TokenType::GreaterThanOrEqual)) {
+        
+        // 比較ノードを作成
+        auto node = std::make_unique<ASTNode>(NodeType::Comparison, tokens[pos].value);
+        node->children.push_back(std::move(left));
+        
+        advance(); //　比較演算子
+        
+        node->children.push_back(parseExpression()); // 右辺
+        
+        return node;
+    }
 
-    return node;
+    return left;
 }
 
 // 条件式の解析
 std::unique_ptr<ASTNode> Parser::parseCondition() {
     std::cout << "条件式を解析中..." << std::endl;
     auto node = std::make_unique<ASTNode>(NodeType::Condition);
-    node->children.push_back(parseExpression());
+
+    // Not演算子
+    if (tokens[pos].type == TokenType::Not) {
+        node->value = tokens[pos].value; // "!"
+        advance(); // "!"
+    }
+
+    if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseComparison());
+        
+        if (tokens[pos].type != TokenType::RParen) {
+            reportError("Expected ')' after condition");
+            return nullptr;
+        }
+        advance(); // ")"
+    } 
+    else {
+        node->children.push_back(parseComparison());
+    }
     
     return node;
 }
