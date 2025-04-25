@@ -228,7 +228,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
     advance(); // "if"
     if (tokens[pos].type == TokenType::LParen) {
         advance(); // "("
-        node->children.push_back(parseExpression()); // 条件式
+        node->children.push_back(parseStatement()); // 条件式
 
         if (tokens[pos].type != TokenType::RParen) {
             reportError("Expected ')' after condition in if statement");
