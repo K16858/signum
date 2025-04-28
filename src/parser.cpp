@@ -48,7 +48,9 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         return parseCondition();
     }
     // 条件分岐の解析
-    else if (tokens[pos].type == TokenType::If) {
+    if (tokens[pos].type == TokenType::If ||
+        tokens[pos].type == TokenType::ElseIf ||
+        tokens[pos].type == TokenType::Else) {
         return parseIfStatement();
     }
     else if (tokens[pos].type == TokenType::Loop) {
