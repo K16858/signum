@@ -196,34 +196,31 @@ std::unique_ptr<ASTNode> Parser::parseComparison() {
 // 条件式の解析
 std::unique_ptr<ASTNode> Parser::parseCondition() {
     std::cout << "条件式を解析中..." << std::endl;
-    auto node = std::make_unique<ASTNode>(NodeType::Condition);
-
-    // Not演算子
+    
+    // NOTの処理
     if (tokens[pos].type == TokenType::Not) {
-        node->value = tokens[pos].value; // "!"
-        advance(); // "!"
-    }
-
-    if (tokens[pos].type == TokenType::And || tokens[pos].type == TokenType::Or) {
-        node->value = tokens[pos].value; // "&&" "||"
-        advance(); // "&&"  "||"
-    }
-
-    if (tokens[pos].type == TokenType::LParen) {
-        advance(); // "("
-        node->children.push_back(parseComparison());
-        
-        if (tokens[pos].type != TokenType::RParen) {
-            reportError("Expected ')' after condition");
-            return nullptr;
-        }
-        advance(); // ")"
-    } 
-    else {
-        node->children.push_back(parseComparison());
+        auto node = std::make_unique<ASTNode>(NodeType::LogicalExpression, "!");
+        advance(); // "!" をスキップ
+        node->children.push_back(parseCondition()); // NOTの後の式
+        return node;
     }
     
-    return node;
+    // 最初の比較式
+    auto left = parseComparison();
+    
+    // AND/ORが続く場合
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::And || tokens[pos].type == TokenType::Or)) {
+        auto op = tokens[pos].value; // "&&"  "||"
+        advance();
+        
+        auto right = parseComparison(); // 右辺
+        auto node = std::make_unique<ASTNode>(NodeType::LogicalExpression, op);
+        node->children.push_back(std::move(left));
+        node->children.push_back(std::move(right));
+        left = std::move(node);
+    }
+    
+    return left;
 }
 
 // 条件分岐の解析
