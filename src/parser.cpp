@@ -204,6 +204,11 @@ std::unique_ptr<ASTNode> Parser::parseCondition() {
         advance(); // "!"
     }
 
+    if (tokens[pos].type == TokenType::And || tokens[pos].type == TokenType::Or) {
+        node->value = tokens[pos].value; // "&&" "||"
+        advance(); // "&&"  "||"
+    }
+
     if (tokens[pos].type == TokenType::LParen) {
         advance(); // "("
         node->children.push_back(parseComparison());
@@ -228,7 +233,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
     advance(); // "if"
     if (tokens[pos].type == TokenType::LParen) {
         advance(); // "("
-        node->children.push_back(parseStatement()); // 条件式
+        node->children.push_back(parseCondition()); // 条件式
 
         if (tokens[pos].type != TokenType::RParen) {
             reportError("Expected ')' after condition in if statement");
@@ -238,6 +243,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
     } 
     else {
         reportError("Expected '(' after 'if'");
+        return nullptr;
     }
 
     // thenの解析
@@ -255,6 +261,38 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
         advance(); // "}"
 
         node->children.push_back(std::move(thenNode)); // thenを追加
+
+        while (pos < tokens.size() && tokens[pos].type == TokenType::Else) {
+            advance(); // "else"
+            
+            // else if の場合
+            if (pos < tokens.size() && tokens[pos].type == TokenType::If) {
+                // else if部分を再帰的に解析して、子ノードとして追加
+                node->children.push_back(parseIfStatement());
+                // parseIfStatementが戻ったらループを抜ける
+                break;
+            }
+            // else の場合
+            else if (tokens[pos].type == TokenType::LBrace) {
+                advance(); // "{"
+                auto elseNode = std::make_unique<ASTNode>(NodeType::Statement);
+                while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+                    elseNode->children.push_back(parseStatement());
+                }
+
+                if (tokens[pos].type != TokenType::RBrace) {
+                    reportError("Expected '}' after else block in if statement");
+                    return nullptr;
+                }
+                advance(); // "}"
+                
+                node->children.push_back(std::move(elseNode)); // elseを追加
+            } 
+            else {
+                reportError("Expected '{' or 'if' after 'else' in if statement");
+                return nullptr;
+            }
+        }
     }
     else {
         reportError("Expected '{' after condition in if statement");
