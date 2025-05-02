@@ -21,8 +21,17 @@ std::unique_ptr<ASTNode> Parser::parseProgram() {
 
 // ステートメントの解析
 std::unique_ptr<ASTNode> Parser::parseStatement() {
+    if (pos + 1 >= tokens.size()) {
+        reportError("Unexpected end of tokens in statement");
+        return nullptr;
+    }
     // 代入文の解析
-    if (pos + 2 < tokens.size() && tokens[pos+1].type == TokenType::Assign) {
+    if ((tokens[pos+1].type == TokenType::Assign ||
+        tokens[pos+1].type == TokenType::PlusEqual ||
+        tokens[pos+1].type == TokenType::MinusEqual ||
+        tokens[pos+1].type == TokenType::MultiplyEqual ||
+        tokens[pos+1].type == TokenType::DivideEqual ||
+        tokens[pos+1].type == TokenType::ModulusEqual)) {
         return parseAssignment();
     }
     // 比較演算の解析
@@ -38,7 +47,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
     else if (tokens[pos+1].type == TokenType::Plus ||
              tokens[pos+1].type == TokenType::Minus ||
              tokens[pos+1].type == TokenType::Multiply ||
-             tokens[pos+1].type == TokenType::Divide) {
+             tokens[pos+1].type == TokenType::Divide ||
+             tokens[pos+1].type == TokenType::Modulus) {
         return parseExpression();
     }
     // 条件式の解析
@@ -152,16 +162,50 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
 
 }
 
-
-// 代入文の解析
+// 代入文と複合代入の解析
 std::unique_ptr<ASTNode> Parser::parseAssignment() {
     std::cout << "代入文を解析中..." << std::endl;
-    auto node = std::make_unique<ASTNode>(NodeType::Assignment, "=");
+    
+    auto left = parseMemoryRef(); // 左辺のメモリ参照
+    if (!left) {
+        reportError("Error: Expected memory reference on left side of assignment");
+        return nullptr;
+    }
 
-    node->children.push_back(parseMemoryRef()); // 左辺のメモリ参照
-    advance(); // "="
-    node->children.push_back(parseExpression()); // 右辺の式
+    // 演算子タイプを確認
+    TokenType opType = tokens[pos].type;
+    std::string opValue = tokens[pos].value;
+    advance(); // 演算子をスキップ
+    
+    auto node = std::make_unique<ASTNode>(NodeType::Assignment, opValue);
+    node->children.push_back(std::move(left));
 
+    // 通常の代入
+    if (opType == TokenType::Assign) {
+        node->children.push_back(parseExpression());
+    } 
+    // 複合代入（+=, -=, *=, /=, %=）
+    else {
+        
+        // 左辺のコピーを作成
+        auto leftCopy = std::make_unique<ASTNode>(NodeType::MemoryRef, left->value);
+        
+        // 演算子抽出
+        std::string actualOp;
+        if (opType == TokenType::PlusEqual) actualOp = "+";
+        else if (opType == TokenType::MinusEqual) actualOp = "-";
+        else if (opType == TokenType::MultiplyEqual) actualOp = "*";
+        else if (opType == TokenType::DivideEqual) actualOp = "/";
+        else if (opType == TokenType::ModulusEqual) actualOp = "%";
+        
+        // 右辺の式を構築
+        auto right = std::make_unique<ASTNode>(NodeType::ArithmeticExpression, actualOp);
+        right->children.push_back(std::move(leftCopy));
+        right->children.push_back(parseExpression());
+        
+        node->children.push_back(std::move(right));   
+    }
+        
     if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
         advance();
     }
@@ -307,7 +351,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
 std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
     std::cout << "ループを解析中..." << std::endl;
     auto node = std::make_unique<ASTNode>(NodeType::LoopStatement);
-    advance(); // "loop"
+    advance(); // "&"をスキップ
 
     // ループ条件の解析
     if (tokens[pos].type == TokenType::LParen) {
@@ -328,8 +372,9 @@ std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
     // ループブロックの解析
     if (tokens[pos].type == TokenType::LBrace) {
         advance(); // "{"
+        auto loopNode = std::make_unique<ASTNode>(NodeType::Statement);
         while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
-            node->children.push_back(parseStatement());
+            loopNode->children.push_back(parseStatement());
         }
 
         if (tokens[pos].type != TokenType::RBrace) {
@@ -337,9 +382,11 @@ std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
             return nullptr;
         }
         advance(); // "}"
+        
+        node->children.push_back(std::move(loopNode)); // ループ本体を追加
     } 
     else {
-        reportError("Expected '{' after 'loop'");
+        reportError("Expected '{' after loop condition");
         return nullptr;
     }
 
