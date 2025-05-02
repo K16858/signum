@@ -188,6 +188,8 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
     std::string opValue = tokens[pos].value;
     advance(); // 演算子をスキップ
     
+    std::string leftValue = left->value;
+
     auto node = std::make_unique<ASTNode>(NodeType::Assignment, opValue);
     node->children.push_back(std::move(left));
 
@@ -197,24 +199,37 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
     } 
     // 複合代入（+=, -=, *=, /=, %=）
     else {
-        
         // 左辺のコピーを作成
-        auto leftCopy = std::make_unique<ASTNode>(NodeType::MemoryRef, left->value);
-        
+        auto leftCopy = std::make_unique<ASTNode>(NodeType::MemoryRef, leftValue);
+
         // 演算子抽出
         std::string actualOp;
-        if (opType == TokenType::PlusEqual) actualOp = "+";
-        else if (opType == TokenType::MinusEqual) actualOp = "-";
-        else if (opType == TokenType::MultiplyEqual) actualOp = "*";
-        else if (opType == TokenType::DivideEqual) actualOp = "/";
-        else if (opType == TokenType::ModulusEqual) actualOp = "%";
-        
+        if (opType == TokenType::PlusEqual) {
+            actualOp = "+";
+        }
+        else if (opType == TokenType::MinusEqual) {
+            actualOp = "-";
+        }
+        else if (opType == TokenType::MultiplyEqual) {
+            actualOp = "*";
+        }
+        else if (opType == TokenType::DivideEqual) {
+            actualOp = "/";
+        }
+        else if (opType == TokenType::ModulusEqual) {
+            actualOp = "%";
+        }
+        else {
+            reportError("Error: Unknown compound assignment operator");
+            return nullptr;
+        }
+
         // 右辺の式を構築
         auto right = std::make_unique<ASTNode>(NodeType::ArithmeticExpression, actualOp);
         right->children.push_back(std::move(leftCopy));
         right->children.push_back(parseExpression());
         
-        node->children.push_back(std::move(right));   
+        node->children.push_back(std::move(right));
     }
         
     if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
