@@ -21,56 +21,67 @@ std::unique_ptr<ASTNode> Parser::parseProgram() {
 
 // ステートメントの解析
 std::unique_ptr<ASTNode> Parser::parseStatement() {
-    if (pos + 1 >= tokens.size()) {
-        reportError("Unexpected end of tokens in statement");
+    if (pos >= tokens.size()) {
+        reportError("Error: Unexpected end of input");
         return nullptr;
     }
-    // 代入文の解析
-    if ((tokens[pos+1].type == TokenType::Assign ||
-        tokens[pos+1].type == TokenType::PlusEqual ||
-        tokens[pos+1].type == TokenType::MinusEqual ||
-        tokens[pos+1].type == TokenType::MultiplyEqual ||
-        tokens[pos+1].type == TokenType::DivideEqual ||
-        tokens[pos+1].type == TokenType::ModulusEqual)) {
-        return parseAssignment();
-    }
-    // 比較演算の解析
-    else if (tokens[pos+1].type == TokenType::EqualTo||
-             tokens[pos+1].type == TokenType::NotEqualTo ||
-             tokens[pos+1].type == TokenType::LAngleBracket ||
-             tokens[pos+1].type == TokenType::RAngleBracket ||
-             tokens[pos+1].type == TokenType::LessThanOrEqual ||
-             tokens[pos+1].type == TokenType::GreaterThanOrEqual) {
-        return parseComparison();
-    }
-    // 演算の解析
-    else if (tokens[pos+1].type == TokenType::Plus ||
-             tokens[pos+1].type == TokenType::Minus ||
-             tokens[pos+1].type == TokenType::Multiply ||
-             tokens[pos+1].type == TokenType::Divide ||
-             tokens[pos+1].type == TokenType::Modulus) {
-        return parseExpression();
-    }
-    // 条件式の解析
-    else if (tokens[pos].type == TokenType::Not ||
-             tokens[pos].type == TokenType::And ||
-             tokens[pos].type == TokenType::Or) {
-        return parseCondition();
-    }
-    // 条件分岐の解析
-    else if (tokens[pos].type == TokenType::If ||
-        tokens[pos].type == TokenType::ElseIf ||
-        tokens[pos].type == TokenType::Else) {
-        return parseIfStatement();
-    }
-    // ループの解析
-    else if (tokens[pos].type == TokenType::Loop) {
-        return parseLoopStatement();
-    }
-    else {
-        reportError("Unsupported statement type");
-        advance();
-        return nullptr;
+    
+    // まずトークンの種類でどう処理するか決める
+    switch (tokens[pos].type) {
+        // メモリ参照から始まるステートメント
+        case TokenType::MemoryRef: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                
+                // 代入系演算子
+                if (nextType == TokenType::Assign || 
+                    nextType == TokenType::PlusEqual || 
+                    nextType == TokenType::MinusEqual ||
+                    nextType == TokenType::MultiplyEqual ||
+                    nextType == TokenType::DivideEqual ||
+                    nextType == TokenType::ModulusEqual) {
+                    return parseAssignment();
+                }
+                // 四則演算子や比較演算子の場合は式として扱う
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance(); // セミコロンスキップ
+                    }
+                    return expr;
+                }
+            }
+            // 単独メモリ参照
+            auto ref = parseMemoryRef();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return ref;
+        }
+        
+        // 条件式関連
+        case TokenType::Not:
+        case TokenType::And:
+        case TokenType::Or:
+            return parseCondition();
+            
+        // 条件分岐
+        case TokenType::If:
+        case TokenType::ElseIf:
+        case TokenType::Else:
+            return parseIfStatement();
+            
+        // ループ
+        case TokenType::Loop:
+            return parseLoopStatement();
+            
+        // その他の開始トークン（数値や文字列など）
+        default:
+            auto expr = parseExpression();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return expr;
     }
 }
 
