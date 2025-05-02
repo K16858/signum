@@ -297,7 +297,7 @@ std::vector<Token> tokenize(const std::string& src) {
                         pos += 2;
                     }
                     else {
-                        tokens.push_back({TokenType::If, "&", line});
+                        tokens.push_back({TokenType::Loop, "&", line});
                         ++pos;  // & を処理
                     }
                 }

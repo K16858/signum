@@ -48,11 +48,12 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         return parseCondition();
     }
     // 条件分岐の解析
-    if (tokens[pos].type == TokenType::If ||
+    else if (tokens[pos].type == TokenType::If ||
         tokens[pos].type == TokenType::ElseIf ||
         tokens[pos].type == TokenType::Else) {
         return parseIfStatement();
     }
+    // ループの解析
     else if (tokens[pos].type == TokenType::Loop) {
         return parseLoopStatement();
     }
@@ -230,6 +231,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
     std::cout << "条件分岐を解析中..." << std::endl;
     auto node = std::make_unique<ASTNode>(NodeType::IfStatement);
     advance(); // "if"
+
     if (tokens[pos].type == TokenType::LParen) {
         advance(); // "("
         node->children.push_back(parseCondition()); // 条件式
@@ -303,7 +305,45 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
 
 // ループの解析
 std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
+    std::cout << "ループを解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::LoopStatement);
+    advance(); // "loop"
 
+    // ループ条件の解析
+    if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseCondition()); // 条件式
+
+        if (tokens[pos].type != TokenType::RParen) {
+            reportError("Expected ')' after condition in loop statement");
+            return nullptr;
+        } 
+        advance(); // ")"
+    } 
+    else {
+        reportError("Expected '(' after 'loop'");
+        return nullptr;
+    }
+    
+    // ループブロックの解析
+    if (tokens[pos].type == TokenType::LBrace) {
+        advance(); // "{"
+        while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+            node->children.push_back(parseStatement());
+        }
+
+        if (tokens[pos].type != TokenType::RBrace) {
+            reportError("Expected '}' after loop block");
+            return nullptr;
+        }
+        advance(); // "}"
+    } 
+    else {
+        reportError("Expected '{' after 'loop'");
+        return nullptr;
+    }
+
+    return node;
 }
 
  // 入出力文の解析
