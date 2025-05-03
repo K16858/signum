@@ -27,7 +27,10 @@ enum class NodeType {
     IfStatement,
     LoopStatement,
     Assignment,
-    IOStatement,
+    InputStatement,
+    OutputStatement,
+    FileInputStatement,
+    FileOutputStatement,
 };
 
 inline std::string nodeType2String(NodeType type) {
@@ -49,7 +52,10 @@ inline std::string nodeType2String(NodeType type) {
         case NodeType::IfStatement: return "条件分岐";
         case NodeType::LoopStatement: return "ループ";
         case NodeType::Assignment: return "代入";
-        case NodeType::IOStatement: return "入出力";
+        case NodeType::InputStatement: return "入力文";
+        case NodeType::OutputStatement: return "出力文";
+        case NodeType::FileInputStatement: return "ファイル入力文";
+        case NodeType::FileOutputStatement: return "ファイル出力文";
         default: return "不明";
     }
 }
@@ -167,7 +173,10 @@ public:
     std::unique_ptr<ASTNode> parseIfStatement(); // 条件分岐の解析
     std::unique_ptr<ASTNode> parseLoopStatement(); // ループの解析
     std::unique_ptr<ASTNode> parseAssignment(); // 代入文の解析
-    std::unique_ptr<ASTNode> parseIOStatement(); // 入出力文の解析
+    std::unique_ptr<ASTNode> parseInputStatement(); // 入力文の解析
+    std::unique_ptr<ASTNode> parseOutputStatement(); // 出力文の解析
+    std::unique_ptr<ASTNode> parseFileInputStatement(); // ファイル入力文の解析
+    std::unique_ptr<ASTNode> parseFileOutputStatement(); // ファイル出力文の解析
     std::unique_ptr<ASTNode> parseCast(); // 型変換の解析
 
 private:

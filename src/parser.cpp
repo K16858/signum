@@ -74,6 +74,22 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         // ループ
         case TokenType::Loop:
             return parseLoopStatement();
+
+        //  出力文
+        case TokenType::LAngleBracket:
+            return parseOutputStatement();
+        
+        // 入力文
+        case TokenType::RAngleBracket:
+            return parseInputStatement();
+
+        // ファイル出力文
+        case TokenType::DoubleLAngleBracket:
+            return parseFileOutputStatement();
+
+        // ファイル入力文
+        case TokenType::DoubleRAngleBracket:
+            return parseFileInputStatement();
             
         // その他の開始トークン（数値や文字列など）
         default:
@@ -419,9 +435,50 @@ std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
     return node;
 }
 
- // 入出力文の解析
-std::unique_ptr<ASTNode> Parser::parseIOStatement() {
+// 出力文の解析
+std::unique_ptr<ASTNode> Parser::parseOutputStatement() {
+    std::cout << "出力文を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::OutputStatement);
+    advance(); // "<" をスキップ
+    
+    // 出力する式を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            reportError("Expected memory reference in output statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        auto strNode = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(strNode));
+    } 
+    else {
+        auto expr = parseExpression();
+        if (!expr) {
+            reportError("Expected expression in output statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(expr));
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after output statement");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
 
+    return node;
+}
+
+// 入力文の解析
+std::unique_ptr<ASTNode> Parser::parseInputStatement() {
+    std::cout << "入力文を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::InputStatement);
+    advance(); // '>>'
+    
 }
 
 // 型変換の解析
