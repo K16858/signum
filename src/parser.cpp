@@ -475,9 +475,16 @@ std::unique_ptr<ASTNode> Parser::parseOutputStatement() {
 
 // 入力文の解析
 std::unique_ptr<ASTNode> Parser::parseInputStatement() {
-    std::cout << "入力文を解析中..." << std::endl;
-    auto node = std::make_unique<ASTNode>(NodeType::InputStatement);
-    advance(); // '>>'
+
+}
+
+// ファイル出力文の解析
+std::unique_ptr<ASTNode> Parser::parseFileOutputStatement() {
+
+}
+
+// ファイル入力文の解析
+std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
     
 }
 
