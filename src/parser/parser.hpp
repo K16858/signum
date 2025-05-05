@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <fstream>
-#include "lexer.hpp"
+#include "../lexer/lexer.hpp"
 
 // ASTノードの種類
 enum class NodeType {

@@ -1,9 +1,6 @@
-// SigNum Lexer
 #pragma once
 
-#include <iostream>
 #include <string>
-#include <vector>
 
 // トークン
 enum class TokenType {
@@ -69,7 +66,5 @@ struct Token {
     size_t line = 0; // 行番号
 };
 
+// トークン型を文字列に変換
 std::string tokenType2String(TokenType type);
-std::string parseMemoryRef(const std::string& src, size_t& pos);
-std::vector<Token> tokenize(const std::string& src);
-void printTokens(const std::vector<Token>& tokens);
