@@ -42,6 +42,14 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
                     nextType == TokenType::ModulusEqual) {
                     return parseAssignment();
                 }
+                // ファイル出力
+                else if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // ファイル入力
+                else if (nextType == TokenType::DoubleRAngleBracket) {
+                    return parseFileInputStatement();
+                }
                 // 四則演算子や比較演算子の場合は式として扱う
                 else {
                     auto expr = parseExpression();
@@ -58,7 +66,22 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             }
             return ref;
         }
-        
+
+        // ファイル入出力
+        case TokenType::String: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                // ファイル出力
+                if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // ファイル入力
+                else if (nextType == TokenType::DoubleRAngleBracket) {
+                    return parseFileInputStatement();
+                }
+            }
+        }
+
         // 条件式関連
         case TokenType::Not:
         case TokenType::And:
@@ -475,17 +498,144 @@ std::unique_ptr<ASTNode> Parser::parseOutputStatement() {
 
 // 入力文の解析
 std::unique_ptr<ASTNode> Parser::parseInputStatement() {
+    std::cout << "入力文を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::InputStatement);
+    advance(); // ">" をスキップ
+    
+    // 入力するメモリ参照を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            reportError("Expected memory reference in input statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else {
+        reportError("Expected memory reference in input statement");
+        return nullptr;
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after input statement");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
 
+    return node;
 }
 
 // ファイル出力文の解析
 std::unique_ptr<ASTNode> Parser::parseFileOutputStatement() {
+    std::cout << "ファイル出力文を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::FileOutputStatement);
 
+    // ファイル名の解析（文字列かメモリ参照）
+    if (tokens[pos].type == TokenType::String) {
+        auto fileNode = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(fileNode));
+    } else if (tokens[pos].type == TokenType::MemoryRef) {
+        auto fileNode = parseMemoryRef();
+        if (!fileNode) {
+            reportError("Expected memory reference for file name");
+            return nullptr;
+        }
+        node->children.push_back(std::move(fileNode));
+    } else {
+        reportError("Expected string or memory reference for file name");
+        return nullptr;
+    }
+    
+    // "<<"" をチェック
+    if (tokens[pos].type != TokenType::DoubleLAngleBracket) {
+        reportError("Expected '<<' after file name in file output statement");
+        return nullptr;
+    }
+    advance(); // "<<"
+    
+    // 出力する式を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            reportError("Expected memory reference in file output statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        auto strNode = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(strNode));
+    } 
+    else {
+        auto expr = parseExpression();
+        if (!expr) {
+            reportError("Expected expression in file output statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(expr));
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after file output statement");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
 }
 
 // ファイル入力文の解析
 std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
+    std::cout << "ファイル入力文を解析中..." << std::endl;
+    auto node = std::make_unique<ASTNode>(NodeType::FileInputStatement);
+
+    // ファイル名の解析（文字列かメモリ参照）
+    if (tokens[pos].type == TokenType::String) {
+        auto fileNode = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(fileNode));
+    } else if (tokens[pos].type == TokenType::MemoryRef) {
+        auto fileNode = parseMemoryRef();
+        if (!fileNode) {
+            reportError("Expected memory reference for file name");
+            return nullptr;
+        }
+        node->children.push_back(std::move(fileNode));
+    } else {
+        reportError("Expected string or memory reference for file name");
+        return nullptr;
+    }
     
+    // ">>" をチェック
+    if (tokens[pos].type != TokenType::DoubleRAngleBracket) {
+        reportError("Expected '>>' after file name in file input statement");
+        return nullptr;
+    }
+    advance(); // ">>"
+    
+    // 入力するメモリ参照を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            reportError("Expected memory reference in file input statement");
+            return nullptr;
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else {
+        reportError("Expected memory reference in file input statement");
+        return nullptr;
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after file input statement");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
 }
 
 // 型変換の解析
