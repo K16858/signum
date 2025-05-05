@@ -687,7 +687,7 @@ std::unique_ptr<ASTNode> Parser::parseFunction() {
         return nullptr;
     }
     
-    auto node = std::make_unique<ASTNode>(NodeType::FunctionCall, functionNumber);
+    auto node = std::make_unique<ASTNode>(NodeType::Function, functionNumber);
     advance(); // 関数定義トークンをスキップ
 
     if (tokens[pos].type != TokenType::LBrace) {
