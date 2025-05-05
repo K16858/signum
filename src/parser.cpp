@@ -223,6 +223,13 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         advance(); // ")"
         return node;
     } 
+    else if (tokens[pos].type == TokenType::IntCast ||
+        tokens[pos].type == TokenType::FloatCast ||
+        tokens[pos].type == TokenType::StrCast ||
+        tokens[pos].type == TokenType::BoolCast) {
+        std::cout << "型変換を解析中..." << std::endl;
+        return parseCast();
+    }
     else {
         reportError("Error: Expected factor");
         return nullptr;
