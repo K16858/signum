@@ -80,11 +80,15 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
                     return parseFileInputStatement();
                 }
             }
+            else {
+                reportError("Error: Unexpected end of input after string token");
+                return nullptr;
+            }
         }
 
         // 関数呼び出し
         case TokenType::FunctionCall:
-            return std::make_unique<ASTNode>(NodeType::FunctionCall, tokens[pos].value);
+            return parseFunctionCall();
         
         // 関数定義
         case TokenType::Function:
@@ -648,7 +652,86 @@ std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
 
 // 関数の解析
 std::unique_ptr<ASTNode> Parser::parseFunction() {
+    std::cout << "関数を解析中..." << std::endl;
+    // 関数番号の取得
+    std::string tokenValue = tokens[pos].value;
+    std::string functionNumber;
+    
+    if (tokenValue.size() >= 3 && tokenValue.substr(0, 1) == "_") {
+        functionNumber = tokenValue.substr(1);
+    } 
+    else {
+        reportError("Invalid function call format. Expected $_XXX where X is a digit.");
+        return nullptr;
+    }
+    
+    // 関数番号の検証
+    if (functionNumber.size() != 3 || 
+        !std::isdigit(functionNumber[0]) || 
+        !std::isdigit(functionNumber[1]) || 
+        !std::isdigit(functionNumber[2])) {
+        reportError("Invalid function number format. Expected $_XXX where X is a digit.");
+        return nullptr;
+    }
+    
+    auto node = std::make_unique<ASTNode>(NodeType::FunctionCall, functionNumber);
+    advance(); // 関数定義トークンをスキップ
 
+    if (tokens[pos].type != TokenType::LBrace) {
+        reportError("Expected '{' after function definition");
+        return nullptr;
+    }
+    advance(); // "{"
+    
+    while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+        node->children.push_back(parseStatement());
+    }
+
+    if (tokens[pos].type != TokenType::RBrace) {
+        reportError("Expected '}' after function body");
+        return nullptr;
+    }
+    advance(); // "}"
+
+    return node;
+}
+
+// 関数呼び出しの解析
+std::unique_ptr<ASTNode> Parser::parseFunctionCall() {
+    std::cout << "関数呼び出しを解析中..." << std::endl;
+    
+    // 関数番号の取得
+    std::string tokenValue = tokens[pos].value;
+    std::string functionNumber;
+    
+    if (tokenValue.size() >= 3 && tokenValue.substr(0, 2) == "$_") {
+        functionNumber = tokenValue.substr(2);
+    } 
+    else {
+        reportError("Invalid function call format. Expected $_XXX where X is a digit.");
+        return nullptr;
+    }
+    
+    // 関数番号の検証
+    if (functionNumber.size() != 3 || 
+        !std::isdigit(functionNumber[0]) || 
+        !std::isdigit(functionNumber[1]) || 
+        !std::isdigit(functionNumber[2])) {
+        reportError("Invalid function number format. Expected $_XXX where X is a digit.");
+        return nullptr;
+    }
+    
+    auto node = std::make_unique<ASTNode>(NodeType::FunctionCall, functionNumber);
+    advance(); // 関数呼び出しトークンをスキップ
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after function call");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
+    
+    return node;
 }
 
 // 型変換の解析

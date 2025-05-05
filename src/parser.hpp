@@ -38,6 +38,7 @@ inline std::string nodeType2String(NodeType type) {
     switch (type) {
         case NodeType::Program: return "ルート";
         case NodeType::Function: return "関数定義";
+        case NodeType::FunctionCall: return "関数呼び出し";
         case NodeType::Statement: return "ステートメント";
         case NodeType::ArithmeticExpression: return "四則演算式";
         case NodeType::LogicalExpression: return "論理式";
@@ -164,6 +165,7 @@ public:
 
     std::unique_ptr<ASTNode> parseProgram(); // コード全体を解析
     std::unique_ptr<ASTNode> parseFunction(); // 関数の解析
+    std::unique_ptr<ASTNode> parseFunctionCall(); // 関数呼び出しの解析
     std::unique_ptr<ASTNode> parseStatement(); // ステートメントの解析
     std::unique_ptr<ASTNode> parseExpression(); // 加減算式の解析
     std::unique_ptr<ASTNode> parseTerm(); // 乗除算式の解析
