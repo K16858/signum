@@ -45,7 +45,7 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             return checkMemoryRef(node);
             
         case NodeType::Number:
-            // 数値リテラル
+            // 数値
             if (node->value.find('.') != std::string::npos) {
                 return MemoryType::Float; // 小数点があれば浮動小数点
             }
@@ -233,6 +233,14 @@ MemoryType SemanticAnalyzer::checkCast(const ASTNode* node) {
 void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     if (node->value.empty()) {
         reportError("Function ID is empty");
+        return;
+    }
+
+    int funcIDInt = node->value[1] - '0';
+
+    if (funcIDInt > 99) {
+        reportError("Invalid function ID: " + node->value);
+        reportError("Function ID must be in the range $_000 to $_099");
         return;
     }
     
