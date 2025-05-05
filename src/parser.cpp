@@ -125,6 +125,12 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         // ファイル入力文
         case TokenType::DoubleRAngleBracket:
             return parseFileInputStatement();
+        
+        case TokenType::IntCast:
+        case TokenType::FloatCast:
+        case TokenType::StrCast:
+        case TokenType::BoolCast:
+            return parseCast(); // 型変換の解析
             
         // その他の開始トークン（数値や文字列など）
         default:
@@ -736,5 +742,36 @@ std::unique_ptr<ASTNode> Parser::parseFunctionCall() {
 
 // 型変換の解析
 std::unique_ptr<ASTNode> Parser::parseCast() {
+    std::cout << "型変換を解析中..." << std::endl;
+    
+    // キャスト種類を保存
+    std::string castType;
+    if (tokens[pos].type == TokenType::IntCast) castType = "int";
+    else if (tokens[pos].type == TokenType::FloatCast) castType = "float";
+    else if (tokens[pos].type == TokenType::StrCast) castType = "string";
+    else if (tokens[pos].type == TokenType::BoolCast) castType = "bool";
+    else {
+        reportError("Expected cast type (int, float, string, bool)");
+        return nullptr;
+    }
+    
+    auto node = std::make_unique<ASTNode>(NodeType::Cast, castType);
+    advance(); // キャストトークンをスキップ
+    
+    // キャストする対象の式
+    auto expr = parseExpression();
+    if (!expr) {
+        reportError("Expected expression for cast");
+        return nullptr;
+    }
+    node->children.push_back(std::move(expr));
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        reportError("Expected ';' after cast expression");
+        return nullptr;
+    }
+    advance(); // セミコロンをスキップ
 
+    return node;
 }

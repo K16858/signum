@@ -114,10 +114,10 @@ std::string tokenType2String(TokenType type) {
         case TokenType::GreaterThanOrEqual: return ">="; // 以上
         case TokenType::EqualTo: return "=="; // 等価
         case TokenType::NotEqualTo: return "!="; // 等しくない
-        case TokenType::IntCast: return "#:"; // 整数キャスト
-        case TokenType::FloatCast: return "~:"; // 浮動小数点キャスト
-        case TokenType::StrCast: return "@:"; // 文字列キャスト
-        case TokenType::BoolCast: return "%:"; // ブールキャスト
+        case TokenType::IntCast: return "整数キャスト"; // 整数キャスト
+        case TokenType::FloatCast: return "浮動小数点キャスト"; // 浮動小数点キャスト
+        case TokenType::StrCast: return "文字列キャスト"; // 文字列キャスト
+        case TokenType::BoolCast: return "ブールキャスト"; // ブールキャスト
         case TokenType::Hash: return "#"; // ハッシュ
         case TokenType::At: return "@"; // アットマーク
         case TokenType::Dollar: return "$"; // ドル
