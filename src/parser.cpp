@@ -82,6 +82,14 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             }
         }
 
+        // 関数呼び出し
+        case TokenType::FunctionCall:
+            return std::make_unique<ASTNode>(NodeType::FunctionCall, tokens[pos].value);
+        
+        // 関数定義
+        case TokenType::Function:
+            return parseFunction();
+
         // 条件式関連
         case TokenType::Not:
         case TokenType::And:
@@ -636,6 +644,11 @@ std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
     advance(); // セミコロンをスキップ
 
     return node;
+}
+
+// 関数の解析
+std::unique_ptr<ASTNode> Parser::parseFunction() {
+
 }
 
 // 型変換の解析

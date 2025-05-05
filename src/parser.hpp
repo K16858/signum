@@ -12,6 +12,7 @@
 enum class NodeType {
     Program,
     Function,
+    FunctionCall,
     Statement,
     ArithmeticExpression,
     LogicalExpression,
