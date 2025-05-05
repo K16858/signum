@@ -1,3 +1,5 @@
+// SigNum Tokens
+
 #include "token.hpp"
 
 // トークン型を文字列に変換する関数
