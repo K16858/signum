@@ -237,9 +237,16 @@ void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     }
 
     int funcIDInt = 0;
-    funcIDInt = std::stoi(node->value);
-    if (funcIDInt < 1 || funcIDInt > 99) {
-        reportError("Function ID must be in range from 001 to 099: " + node->value);
+    // 関数IDの形式(001-099)をチェック
+    try {
+        int funcIDInt = std::stoi(node->value);
+        if (funcIDInt < 1 || funcIDInt > 99) {
+            reportError("Function ID: " + node->value + "is not in range 001-099");
+            return;
+        }
+    } 
+    catch (const std::exception& e) {
+        reportError("Function ID is not number: " + node->value);
         return;
     }
     
