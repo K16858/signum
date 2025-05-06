@@ -22,6 +22,9 @@ struct FunctionInfo {
     bool isDefined;       // 定義済みかどうか
 };
 
+// メモリタイプを文字列に変換
+std::string memoryTypeToString(MemoryType type);
+
 // 意味解析器クラス
 class SemanticAnalyzer {
 private:

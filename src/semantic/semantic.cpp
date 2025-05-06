@@ -2,6 +2,16 @@
 #include "semantic.hpp"
 #include <iostream>
 
+std::string memoryTypeToString(MemoryType type) {
+    switch (type) {
+        case MemoryType::Integer: return "Integer";
+        case MemoryType::Float: return "Float";
+        case MemoryType::String: return "String";
+        case MemoryType::Boolean: return "Boolean";
+        default: return "Unknown";
+    }
+}
+
 // メインの解析関数
 bool SemanticAnalyzer::analyze(const std::unique_ptr<ASTNode>& root) {
     if (!root) return false;
@@ -154,8 +164,8 @@ MemoryType SemanticAnalyzer::checkAssignment(const ASTNode* node) {
     // 型の互換性をチェック
     if (!isCompatible(leftType, rightType)) {
         reportError("Expression type mismatch: " +
-                    std::to_string(static_cast<int>(leftType)) + " vs " +
-                    std::to_string(static_cast<int>(rightType)));
+                    memoryTypeToString(leftType) + " vs " + 
+                    memoryTypeToString(rightType));
     }
     
     // メモリ参照なら型を記録
