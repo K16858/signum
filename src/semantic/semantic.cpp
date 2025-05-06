@@ -58,6 +58,14 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
         case NodeType::Cast:
             // 型変換
             return checkCast(node);
+        
+        case NodeType::Comparison:
+            if (checkCondition(node)) {
+                return MemoryType::Boolean;
+            } 
+            else {
+                return MemoryType::Integer;
+            }
             
         case NodeType::IfStatement:
             // 条件分岐
@@ -205,6 +213,28 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
         reportError("Expression type mismatch: " + op);
         return MemoryType::Integer;
     }
+}
+
+bool SemanticAnalyzer::checkCondition(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("Condition has too few children");
+        return false;
+    }
+    
+    auto leftType = visitNode(node->children[0].get());
+    auto rightType = visitNode(node->children[1].get());
+    
+    // 比較演算子による型チェック
+    std::string op = node->value;
+    if ((op == "==" || op == "!=" || op == "<" || op == ">" ||
+         op == "<=" || op == ">=") &&
+        (leftType == MemoryType::Integer || leftType == MemoryType::Float) &&
+        (rightType == MemoryType::Integer || rightType == MemoryType::Float)) {
+        return true;
+    }
+    
+    reportError("Condition type mismatch: " + op);
+    return false;
 }
 
 // キャストのチェック
