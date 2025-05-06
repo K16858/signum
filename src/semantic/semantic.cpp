@@ -60,12 +60,8 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             return checkCast(node);
         
         case NodeType::Comparison:
-            if (checkCondition(node)) {
-                return MemoryType::Boolean;
-            } 
-            else {
-                return MemoryType::Integer;
-            }
+            checkCondition(node);
+            return MemoryType::Boolean;
             
         case NodeType::IfStatement:
             // 条件分岐
@@ -198,11 +194,15 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
     
     // 演算子による型チェック
     std::string op = node->value;
-    if (op == "+" && leftType == MemoryType::String && rightType == MemoryType::String) {
-        // 文字列の連結はOK
-        return MemoryType::String;
+    if (op == "+") {
+        // 文字列の連結処理
+        if (leftType == MemoryType::String || rightType == MemoryType::String) {
+            // 文字列 + 任意の型は文字列になる
+            return MemoryType::String;
+        }
     }
-    else if ((op == "+" || op == "-" || op == "*" || op == "/") &&
+    
+    if ((op == "+" || op == "-" || op == "*" || op == "/") &&
              (leftType == MemoryType::Integer || leftType == MemoryType::Float) &&
              (rightType == MemoryType::Integer || rightType == MemoryType::Float)) {
         // 数値演算はOK
