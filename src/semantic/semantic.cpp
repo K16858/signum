@@ -203,6 +203,7 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
     
     // 演算子による型チェック
     std::string op = node->value;
+
     if (op == "+") {
         // 文字列の連結処理
         if (leftType == MemoryType::String || rightType == MemoryType::String) {
@@ -218,10 +219,15 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
         return (leftType == MemoryType::Float || rightType == MemoryType::Float) ?
                MemoryType::Float : MemoryType::Integer;
     }
-    else {
-        reportError("Expression type mismatch: " + op);
-        return MemoryType::Integer;
+
+    if ((op == "&&" || op == "||") &&
+        leftType == MemoryType::Boolean && rightType == MemoryType::Boolean) {
+        return MemoryType::Boolean;
     }
+
+    reportError("Expression type mismatch: " + op + " with types " + 
+                memoryTypeToString(leftType) + " and " + memoryTypeToString(rightType));
+    return MemoryType::Integer;
 }
 
 bool SemanticAnalyzer::checkCondition(const ASTNode* node) {
@@ -280,7 +286,7 @@ void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     try {
         int funcIDInt = std::stoi(node->value);
         if (funcIDInt < 1 || funcIDInt > 99) {
-            reportError("Function ID: " + node->value + "is not in range 001-099");
+            reportError("Function ID: " + node->value + " is not in range 001-099");
             idError = true;
         }
     } 
