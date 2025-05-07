@@ -159,7 +159,7 @@ std::unique_ptr<ASTNode> Parser::parseMemoryRef() {
 
 // 加減算式の解析
 std::unique_ptr<ASTNode> Parser::parseExpression() {
-    std::cout << "加減算式を解析中..." << std::endl;
+    debugLog("加減算式を解析中...");
     auto left = parseTerm(); // 乗除算を先に処理
 
     while (pos < tokens.size() && (tokens[pos].type == TokenType::Plus || tokens[pos].type == TokenType::Minus)) {
@@ -178,7 +178,7 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
 
 // 乗除算式の解析
 std::unique_ptr<ASTNode> Parser::parseTerm() {
-    std::cout << "乗除算式を解析中..." << std::endl;
+    debugLog("乗除算式を解析中...");
     auto left = parseFactor(); // 左辺の因子
 
     while (pos < tokens.size() && (tokens[pos].type == TokenType::Multiply || tokens[pos].type == TokenType::Divide || tokens[pos].type == TokenType::Modulus)) {
@@ -197,16 +197,16 @@ std::unique_ptr<ASTNode> Parser::parseTerm() {
 
 // 因子の解析
 std::unique_ptr<ASTNode> Parser::parseFactor() {
-    std::cout << "因子を解析中..." << std::endl;
+    debugLog("因子を解析中...");
 
     if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
-        std::cout << "数値を解析中..." << std::endl;
+        debugLog("数値を解析中...");
         auto node = std::make_unique<ASTNode>(NodeType::Number, tokens[pos].value);
         advance();
         return node;
     } 
     else if (tokens[pos].type == TokenType::String) {
-        std::cout << "文字列を解析中..." << std::endl;
+        debugLog("文字列を解析中...");
         auto node = std::make_unique<ASTNode>(NodeType::String, tokens[pos].value);
         advance();
         return node;
@@ -216,7 +216,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         return node;
     } 
     else if (tokens[pos].type == TokenType::LParen) {
-        std::cout << "括弧を解析中..." << std::endl;
+        debugLog("括弧を解析中...");
         advance(); // "("
         auto node = parseExpression(); // 括弧内の式を解析
         if (tokens[pos].type != TokenType::RParen) {
@@ -231,7 +231,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         tokens[pos].type == TokenType::FloatCast ||
         tokens[pos].type == TokenType::StrCast ||
         tokens[pos].type == TokenType::BoolCast) {
-        std::cout << "型変換を解析中..." << std::endl;
+        debugLog("型変換を解析中...");
         return parseCast();
     }
     else {
@@ -244,7 +244,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
 
 // 代入文と複合代入の解析
 std::unique_ptr<ASTNode> Parser::parseAssignment() {
-    std::cout << "代入文を解析中..." << std::endl;
+    debugLog("代入文を解析中...");
     
     auto left = parseMemoryRef(); // 左辺のメモリ参照
     if (!left) {
@@ -312,7 +312,7 @@ std::unique_ptr<ASTNode> Parser::parseAssignment() {
 
 // 比較演算の解析
 std::unique_ptr<ASTNode> Parser::parseComparison() {
-    std::cout << "比較演算を解析中..." << std::endl;
+    debugLog("比較演算を解析中...");
     auto left = parseExpression(); // 左辺の式
 
     if (pos < tokens.size() && (
@@ -339,7 +339,7 @@ std::unique_ptr<ASTNode> Parser::parseComparison() {
 
 // 条件式の解析
 std::unique_ptr<ASTNode> Parser::parseCondition() {
-    std::cout << "条件式を解析中..." << std::endl;
+    debugLog("条件式を解析中...");
     
     // NOTの処理
     if (tokens[pos].type == TokenType::Not) {
@@ -369,7 +369,7 @@ std::unique_ptr<ASTNode> Parser::parseCondition() {
 
 // 条件分岐の解析
 std::unique_ptr<ASTNode> Parser::parseIfStatement() {
-    std::cout << "条件分岐を解析中..." << std::endl;
+    debugLog("条件分岐を解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::IfStatement);
     advance(); // "if"
 
@@ -452,7 +452,7 @@ std::unique_ptr<ASTNode> Parser::parseIfStatement() {
 
 // ループの解析
 std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
-    std::cout << "ループを解析中..." << std::endl;
+    debugLog("ループを解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::LoopStatement);
     advance(); // "&"をスキップ
 
@@ -502,7 +502,7 @@ std::unique_ptr<ASTNode> Parser::parseLoopStatement() {
 
 // 出力文の解析
 std::unique_ptr<ASTNode> Parser::parseOutputStatement() {
-    std::cout << "出力文を解析中..." << std::endl;
+    debugLog("出力文を解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::OutputStatement);
     advance(); // "<" をスキップ
     
@@ -543,7 +543,7 @@ std::unique_ptr<ASTNode> Parser::parseOutputStatement() {
 
 // 入力文の解析
 std::unique_ptr<ASTNode> Parser::parseInputStatement() {
-    std::cout << "入力文を解析中..." << std::endl;
+    debugLog("入力文を解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::InputStatement);
     advance(); // ">" をスキップ
     
@@ -575,7 +575,7 @@ std::unique_ptr<ASTNode> Parser::parseInputStatement() {
 
 // ファイル出力文の解析
 std::unique_ptr<ASTNode> Parser::parseFileOutputStatement() {
-    std::cout << "ファイル出力文を解析中..." << std::endl;
+    debugLog("ファイル出力文を解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::FileOutputStatement);
 
     // ファイル名の解析（文字列かメモリ参照）
@@ -642,7 +642,7 @@ std::unique_ptr<ASTNode> Parser::parseFileOutputStatement() {
 
 // ファイル入力文の解析
 std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
-    std::cout << "ファイル入力文を解析中..." << std::endl;
+    debugLog("ファイル入力文を解析中...");
     auto node = std::make_unique<ASTNode>(NodeType::FileInputStatement);
 
     // ファイル名の解析（文字列かメモリ参照）
@@ -700,7 +700,7 @@ std::unique_ptr<ASTNode> Parser::parseFileInputStatement() {
 
 // 関数の解析
 std::unique_ptr<ASTNode> Parser::parseFunction() {
-    std::cout << "関数を解析中..." << std::endl;
+    debugLog("関数を解析中...");
     // 関数番号の取得
     std::string tokenValue = tokens[pos].value;
     std::string functionNumber;
@@ -750,7 +750,7 @@ std::unique_ptr<ASTNode> Parser::parseFunction() {
 
 // 関数呼び出しの解析
 std::unique_ptr<ASTNode> Parser::parseFunctionCall() {
-    std::cout << "関数呼び出しを解析中..." << std::endl;
+    debugLog("関数呼び出しを解析中...");
     
     // 関数番号の取得
     std::string tokenValue = tokens[pos].value;
@@ -791,7 +791,7 @@ std::unique_ptr<ASTNode> Parser::parseFunctionCall() {
 
 // 型変換の解析
 std::unique_ptr<ASTNode> Parser::parseCast() {
-    std::cout << "型変換を解析中..." << std::endl;
+    debugLog("型変換を解析中...");
     
     // キャスト種類を保存
     std::string castType;

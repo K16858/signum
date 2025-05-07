@@ -15,9 +15,11 @@ private:
     std::vector<Token> tokens;  // トークンのリスト
     size_t pos = 0;             // 解析位置
     bool hasError = false;      // エラーフラグ
+    bool debugMode = false;    // デバッグモード
 
 public:
-    Parser(const std::vector<Token>& tokens) : tokens(tokens) {} // コンストラクタ
+    Parser(const std::vector<Token>& tokens, bool debug = false) 
+    : tokens(tokens), pos(0), debugMode(debug) {} // コンストラクタ
 
      // コード全体を解析
     std::unique_ptr<ASTNode> parseProgram();
@@ -82,4 +84,9 @@ private:
     }
     std::unique_ptr<ASTNode> recoverFromError(const std::string& message); // エラーから回復
     void synchronize();
+    void debugLog(const std::string& message) {
+        if (debugMode) {
+            std::cout << message << std::endl;
+        }
+    }
 };
