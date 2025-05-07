@@ -32,6 +32,7 @@ enum class NodeType {
     OutputStatement,
     FileInputStatement,
     FileOutputStatement,
+    Error, // エラー用ノード
 };
 
 // ノード型を文字列に変換

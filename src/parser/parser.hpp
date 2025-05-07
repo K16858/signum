@@ -80,4 +80,6 @@ private:
         std::cerr << "Error: " << message << " at token " << pos << std::endl;
         hasError = true;
     }
+    std::unique_ptr<ASTNode> recoverFromError(const std::string& message); // エラーから回復
+    void synchronize();
 };

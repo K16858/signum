@@ -230,6 +230,7 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
     return MemoryType::Integer;
 }
 
+// 条件式のチェック
 bool SemanticAnalyzer::checkCondition(const ASTNode* node) {
     if (node->children.size() < 2) {
         reportError("Condition has too few children");

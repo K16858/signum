@@ -27,6 +27,7 @@ std::string nodeType2String(NodeType type) {
         case NodeType::OutputStatement: return "出力文";
         case NodeType::FileInputStatement: return "ファイル入力文";
         case NodeType::FileOutputStatement: return "ファイル出力文";
+        case NodeType::Error: return "エラー";
         default: return "不明";
     }
 }

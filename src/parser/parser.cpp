@@ -782,3 +782,10 @@ std::unique_ptr<ASTNode> Parser::parseCast() {
 
     return node;
 }
+
+std::unique_ptr<ASTNode> Parser::recoverFromError(const std::string& message) {
+    reportError(message);
+    synchronize(); // 次のポイントまでスキップ
+    
+    return std::make_unique<ASTNode>(NodeType::Error, message); // エラーを示すノードを返す
+}
