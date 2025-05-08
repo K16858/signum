@@ -22,58 +22,58 @@ public:
     : tokens(tokens), pos(0), debugMode(debug) {} // コンストラクタ
 
      // コード全体を解析
-    std::unique_ptr<ASTNode> parseProgram();
+    std::shared_ptr<ASTNode> parseProgram();
 
     // 関数の解析
-    std::unique_ptr<ASTNode> parseFunction();
+    std::shared_ptr<ASTNode> parseFunction();
 
     // 関数呼び出しの解析 
-    std::unique_ptr<ASTNode> parseFunctionCall();
+    std::shared_ptr<ASTNode> parseFunctionCall();
 
     // ステートメントの解析
-    std::unique_ptr<ASTNode> parseStatement();
+    std::shared_ptr<ASTNode> parseStatement();
 
     // 加減算式の解析
-    std::unique_ptr<ASTNode> parseExpression();
+    std::shared_ptr<ASTNode> parseExpression();
 
     // 乗除算式の解析           
-    std::unique_ptr<ASTNode> parseTerm();
+    std::shared_ptr<ASTNode> parseTerm();
 
     // 因子の解析
-    std::unique_ptr<ASTNode> parseFactor();
+    std::shared_ptr<ASTNode> parseFactor();
 
     // メモリ参照の解析
-    std::unique_ptr<ASTNode> parseMemoryRef();
+    std::shared_ptr<ASTNode> parseMemoryRef();
 
     // 条件式の解析
-    std::unique_ptr<ASTNode> parseCondition();
+    std::shared_ptr<ASTNode> parseCondition();
 
     // 比較演算子の解析
-    std::unique_ptr<ASTNode> parseComparison();
+    std::shared_ptr<ASTNode> parseComparison();
 
     // 条件分岐の解析
-    std::unique_ptr<ASTNode> parseIfStatement();
+    std::shared_ptr<ASTNode> parseIfStatement();
 
      // ループの解析
-    std::unique_ptr<ASTNode> parseLoopStatement();
+    std::shared_ptr<ASTNode> parseLoopStatement();
 
     // 代入文の解析
-    std::unique_ptr<ASTNode> parseAssignment();
+    std::shared_ptr<ASTNode> parseAssignment();
 
     // 入力文の解析
-    std::unique_ptr<ASTNode> parseInputStatement();
+    std::shared_ptr<ASTNode> parseInputStatement();
 
     // 出力文の解析
-    std::unique_ptr<ASTNode> parseOutputStatement();
+    std::shared_ptr<ASTNode> parseOutputStatement();
 
     // ファイル入力文の解析
-    std::unique_ptr<ASTNode> parseFileInputStatement();
+    std::shared_ptr<ASTNode> parseFileInputStatement();
 
     // ファイル出力文の解析
-    std::unique_ptr<ASTNode> parseFileOutputStatement();
+    std::shared_ptr<ASTNode> parseFileOutputStatement();
 
     // 型変換の解析
-    std::unique_ptr<ASTNode> parseCast();
+    std::shared_ptr<ASTNode> parseCast();
 
 private:
     Token& getToken() { return tokens[pos]; }       // 現在のトークンを取得
@@ -82,7 +82,7 @@ private:
         std::cerr << "Error: " << message << " at token " << pos << std::endl;
         hasError = true;
     }
-    std::unique_ptr<ASTNode> recoverFromError(const std::string& message); // エラーから回復
+    std::shared_ptr<ASTNode> recoverFromError(const std::string& message); // エラーから回復
     void synchronize();
     void debugLog(const std::string& message) {
         if (debugMode) {

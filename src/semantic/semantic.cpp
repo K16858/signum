@@ -13,7 +13,7 @@ std::string memoryTypeToString(MemoryType type) {
 }
 
 // メインの解析関数
-bool SemanticAnalyzer::analyze(const std::unique_ptr<ASTNode>& root) {
+bool SemanticAnalyzer::analyze(const std::shared_ptr<ASTNode>& root) {
     if (!root) return false;
     
     visitNode(root.get());

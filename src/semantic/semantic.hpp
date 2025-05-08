@@ -42,7 +42,7 @@ public:
     SemanticAnalyzer() = default;
     
     // 意味解析関数
-    bool analyze(const std::unique_ptr<ASTNode>& root);
+    bool analyze(const std::shared_ptr<ASTNode>& root);
     
     // エラー取得
     const std::vector<std::string>& getErrors() const { return errors; }

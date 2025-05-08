@@ -42,7 +42,7 @@ std::string nodeType2String(NodeType type);
 struct ASTNode {
     NodeType type; // ノードの種類
     std::string value; // ノードの値
-    std::vector<std::unique_ptr<ASTNode>> children; // 子ノードのリスト
+    std::vector<std::shared_ptr<ASTNode>> children; // 子ノードのリスト
 
     ASTNode(NodeType type, const std::string& value = "");
     virtual ~ASTNode() = default;
