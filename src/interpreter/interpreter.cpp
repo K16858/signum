@@ -84,3 +84,171 @@ Value Interpreter::evaluateProgram(const std::shared_ptr<ASTNode>& program) {
     }
     return Value();
 }
+
+// 関数ノード評価
+Value Interpreter::evaluateFunction(const std::shared_ptr<ASTNode>& node) {
+    // 関数の定義を保存
+    functions[std::stoi(node->value)] = node;
+    return Value();
+}
+
+Value Interpreter::evaluateFunctionCall(const std::shared_ptr<ASTNode>& node) {
+    // 関数の呼び出しを評価
+    auto it = functions.find(std::stoi(node->value));
+    if (it != functions.end()) {
+        return evaluateNode(it->second);
+    }
+    throw std::runtime_error("Function not found: " + node->value);
+}
+
+// 代入ノード評価
+Value Interpreter::evaluateAssignment(const std::shared_ptr<ASTNode>& node) {
+    std::string varName = node->children[0]->value;
+    Value value = evaluateNode(node->children[1]);
+    setMemoryValue(varName[0], evaluateMemoryIndex(varName), value);
+    return value;
+}
+
+// 算術式ノード評価
+Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& node) {
+    // 単項式
+    if (node->children.size() == 1) {
+        return evaluateNode(node->children[0]);
+    } 
+    // 二項式
+    else if (node->children.size() == 2) {
+        Value left = evaluateNode(node->children[0]);
+        Value right = evaluateNode(node->children[1]);
+        std::string op = node->value;
+
+        // int-int
+        if (std::holds_alternative<int>(left) && std::holds_alternative<int>(right)) {
+            int lval = std::get<int>(left);
+            int rval = std::get<int>(right);
+            
+            if (op == "+") return lval + rval;
+            if (op == "-") return lval - rval;
+            if (op == "*") return lval * rval;
+            if (op == "/") {
+                if (rval == 0) throw std::runtime_error("Division by zero");
+                return lval / rval;
+            }
+        } 
+        // double-double
+        else if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
+            double lval = std::get<double>(left);
+            double rval = std::get<double>(right);
+            
+            if (op == "+") return lval + rval;
+            if (op == "-") return lval - rval;
+            if (op == "*") return lval * rval;
+            if (op == "/") {
+                if (rval == 0.0) throw std::runtime_error("Division by zero");
+                return lval / rval;
+            }
+        }
+        // int-double
+        else if (std::holds_alternative<int>(left) && std::holds_alternative<double>(right) 
+                || std::holds_alternative<double>(left) && std::holds_alternative<int>(right)) {
+            int lval = std::get<int>(left);
+            double rval = std::get<double>(right);
+            
+            if (op == "+") return lval + rval;
+            if (op == "-") return lval - rval;
+            if (op == "*") return lval * rval;
+            if (op == "/") {
+                if (rval == 0.0) throw std::runtime_error("Division by zero");
+                return lval / rval;
+            }
+        }
+        // int-bool
+        else if (std::holds_alternative<int>(left) && std::holds_alternative<bool>(right)) {
+            int lval = std::get<int>(left);
+            bool rval = std::get<bool>(right);
+            
+            if (op == "+") return lval + (rval ? 1 : 0);
+            if (op == "-") return lval - (rval ? 1 : 0);
+            if (op == "*") return lval * (rval ? 1 : 0);
+            if (op == "/") {
+                if (rval) return lval / 1;
+                throw std::runtime_error("Division by zero");
+            }
+        }
+        // double-bool
+        else if (std::holds_alternative<double>(left) && std::holds_alternative<bool>(right)) {
+            double lval = std::get<double>(left);
+            bool rval = std::get<bool>(right);
+            
+            if (op == "+") return lval + (rval ? 1.0 : 0.0);
+            if (op == "-") return lval - (rval ? 1.0 : 0.0);
+            if (op == "*") return lval * (rval ? 1.0 : 0.0);
+            if (op == "/") {
+                if (rval) return lval / 1.0;
+                throw std::runtime_error("Division by zero");
+            }
+        }
+        // bool-int
+        else if (std::holds_alternative<bool>(left) && std::holds_alternative<int>(right)) {
+            bool lval = std::get<bool>(left);
+            int rval = std::get<int>(right);
+            
+            if (op == "+") return (lval ? 1 : 0) + rval;
+            if (op == "-") return (lval ? 1 : 0) - rval;
+            if (op == "*") return (lval ? 1 : 0) * rval;
+            if (op == "/") {
+                if (rval == 0) throw std::runtime_error("Division by zero");
+                return (lval ? 1 : 0) / rval;
+            }
+        }
+        // bool-double
+        else if (std::holds_alternative<bool>(left) && std::holds_alternative<double>(right)) {
+            bool lval = std::get<bool>(left);
+            double rval = std::get<double>(right);
+            
+            if (op == "+") return (lval ? 1.0 : 0.0) + rval;
+            if (op == "-") return (lval ? 1.0 : 0.0) - rval;
+            if (op == "*") return (lval ? 1.0 : 0.0) * rval;
+            if (op == "/") {
+                if (rval == 0.0) throw std::runtime_error("Division by zero");
+                return (lval ? 1.0 : 0.0) / rval;
+            }
+        }
+        // bool-bool
+        else if (std::holds_alternative<bool>(left) && std::holds_alternative<bool>(right)) {
+            bool lval = std::get<bool>(left);
+            bool rval = std::get<bool>(right);
+            
+            if (op == "&&") return lval && rval;
+            if (op == "||") return lval || rval;
+        }
+        // str-str
+        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right) && op == "+") {
+            return std::get<std::string>(left) + std::get<std::string>(right);
+        }
+        // str-int
+        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<int>(right) && op == "+") {
+            return std::get<std::string>(left) + std::to_string(std::get<int>(right));
+        }
+        // str-double
+        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<double>(right) && op == "+") {
+            return std::get<std::string>(left) + std::to_string(std::get<double>(right));
+        }
+        // str-bool
+        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<bool>(right) && op == "+") {
+            return std::get<std::string>(left) + (std::get<bool>(right) ? "true" : "false");
+        }
+        // int-str
+        else if (std::holds_alternative<int>(left) && std::holds_alternative<std::string>(right) && op == "+") {
+            return std::to_string(std::get<int>(left)) + std::get<std::string>(right);
+        }
+        // double-str
+        else if (std::holds_alternative<double>(left) && std::holds_alternative<std::string>(right) && op == "+") {
+            return std::to_string(std::get<double>(left)) + std::get<std::string>(right);
+        }
+        // bool-str
+        else if (std::holds_alternative<bool>(left) && std::holds_alternative<std::string>(right) && op == "+") {
+            return (std::get<bool>(left) ? "true" : "false") + std::get<std::string>(right);
+        }
+    }
+    throw std::runtime_error("Invalid arithmetic expression: " + node->toJSON());
+}
