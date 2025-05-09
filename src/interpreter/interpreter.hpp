@@ -35,6 +35,9 @@ private:
     Value resolveMemoryRef(const std::string& ref);
     int evaluateMemoryIndex(const std::string& indexExpr);
     
+    // 値を文字列に変換
+    std::string valueToString(const Value& val);
+
 public:
     Interpreter(){
         // メモリプールの初期化

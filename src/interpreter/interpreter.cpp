@@ -221,34 +221,28 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
             if (op == "&&") return lval && rval;
             if (op == "||") return lval || rval;
         }
-        // str-str
-        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right) && op == "+") {
-            return std::get<std::string>(left) + std::get<std::string>(right);
-        }
-        // str-int
-        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<int>(right) && op == "+") {
-            return std::get<std::string>(left) + std::to_string(std::get<int>(right));
-        }
-        // str-double
-        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<double>(right) && op == "+") {
-            return std::get<std::string>(left) + std::to_string(std::get<double>(right));
-        }
-        // str-bool
-        else if (std::holds_alternative<std::string>(left) && std::holds_alternative<bool>(right) && op == "+") {
-            return std::get<std::string>(left) + (std::get<bool>(right) ? "true" : "false");
-        }
-        // int-str
-        else if (std::holds_alternative<int>(left) && std::holds_alternative<std::string>(right) && op == "+") {
-            return std::to_string(std::get<int>(left)) + std::get<std::string>(right);
-        }
-        // double-str
-        else if (std::holds_alternative<double>(left) && std::holds_alternative<std::string>(right) && op == "+") {
-            return std::to_string(std::get<double>(left)) + std::get<std::string>(right);
-        }
-        // bool-str
-        else if (std::holds_alternative<bool>(left) && std::holds_alternative<std::string>(right) && op == "+") {
-            return (std::get<bool>(left) ? "true" : "false") + std::get<std::string>(right);
+        // str-任意の型
+        else if ((std::holds_alternative<std::string>(left) || 
+                  std::holds_alternative<std::string>(right)) && op == "+") {
+            return valueToString(left) + valueToString(right);
         }
     }
     throw std::runtime_error("Invalid arithmetic expression: " + node->toJSON());
+}
+
+// 値を文字列に変換
+std::string Interpreter::valueToString(const Value& val) {
+    if (std::holds_alternative<int>(val)) {
+        return std::to_string(std::get<int>(val));
+    }
+    else if (std::holds_alternative<double>(val)) {
+        return std::to_string(std::get<double>(val));
+    }
+    else if (std::holds_alternative<bool>(val)) {
+        return std::get<bool>(val) ? "true" : "false";
+    }
+    else if (std::holds_alternative<std::string>(val)) {
+        return std::get<std::string>(val);
+    }
+    return ""; // 未対応の型の場合
 }
