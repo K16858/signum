@@ -36,7 +36,7 @@ private:
     int evaluateMemoryIndex(const std::string& indexExpr);
     
     // 値を文字列に変換
-    std::string valueToString(const Value& val);
+    static std::string valueToString(const Value& val);
 
 public:
     Interpreter(){
@@ -74,7 +74,4 @@ public:
     // 変数の取得と設定
     Value getMemoryValue(char type, int index);
     void setMemoryValue(char type, int index, const Value& value);
-    
-    // 値表示用
-    static std::string valueToString(const Value& value);
 };

@@ -30,6 +30,17 @@ int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
     throw std::runtime_error("Invalid memory index: " + indexExpr);
 }
 
+// メモリ値の取得
+Value Interpreter::getMemoryValue(char type, int index) {
+    switch (type) {
+        case '#': return intPool[index];
+        case '@': return stringPool[index];
+        case '~': return floatPool[index];
+        case '%': return boolPool[index];
+        default: throw std::runtime_error("Invalid memory type: " + std::string(1, type));
+    }
+}
+
 // 値を文字列に変換
 std::string Interpreter::valueToString(const Value& val) {
     if (std::holds_alternative<int>(val)) {
@@ -421,6 +432,13 @@ Value Interpreter::evaluateInputStatement(const std::shared_ptr<ASTNode>& node) 
     std::cout << "Input " << varName << ": ";
     std::cin >> input;
     setMemoryValue(varName[0], evaluateMemoryIndex(varName), input);
+    return Value();
+}
+
+// 出力文ノード評価
+Value Interpreter::evaluateOutputStatement(const std::shared_ptr<ASTNode>& node) {
+    Value value = evaluateNode(node->children[0]);
+    std::cout << valueToString(value) << std::endl;
     return Value();
 }
 
