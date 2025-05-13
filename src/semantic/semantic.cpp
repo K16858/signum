@@ -285,22 +285,27 @@ void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
         reportError("Function ID is empty");
     }
 
-    int funcIDInt = 0;
+    std::string funcID = node->value;
     bool idError = false;
-    // 関数IDの形式(001-099)をチェック
-    try {
-        int funcIDInt = std::stoi(node->value);
-        if (funcIDInt < 1 || funcIDInt > 99) {
-            reportError("Function ID: " + node->value + " is not in range 001-099");
+    
+    // 関数IDのフォーマットチェック
+    if (funcID.size() < 2 || funcID[0] != '_') {
+        reportError("Invalid function ID format: " + funcID);
+        idError = true;
+    } else {
+        // 数字部分のチェック
+        try {
+            std::string numPart = funcID.substr(1); // アンダースコアを除いた部分
+            int funcIDInt = std::stoi(numPart);
+            if (funcIDInt < 1 || funcIDInt > 99) {
+                reportError("Function ID: " + numPart + " is not in range 001-099");
+                idError = true;
+            }
+        } catch (const std::exception& e) {
+            reportError("Invalid function ID number: " + funcID);
             idError = true;
         }
-    } 
-    catch (const std::exception& e) {
-        reportError("Function ID is not number: " + node->value);
-        idError = true;
     }
-    
-    std::string funcID = node->value;
     
     // すでに定義済みの関数か確認
     if (functions.count(funcID) > 0 && functions[funcID].isDefined) {
