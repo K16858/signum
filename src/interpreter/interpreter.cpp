@@ -484,8 +484,25 @@ Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
 Value Interpreter::evaluateIfStatement(const std::shared_ptr<ASTNode>& node) {
     Value condition = evaluateNode(node->children[0]);
     if (std::holds_alternative<bool>(condition) && std::get<bool>(condition)) {
+        // ifが成立したら、if本体を実行して終了
         return evaluateNode(node->children[1]);
+    } 
+    else if (node->children.size() > 2) {
+        // else ifがあるか（2つ置きにノードが条件と本体になってる）
+        for (size_t i = 2; i < node->children.size(); i += 2) {
+            // 最後の1つはelseブロック
+            if (i == node->children.size() - 1) {
+                return evaluateNode(node->children[i]);
+            }
+            
+            // それ以外はelse if条件を評価
+            condition = evaluateNode(node->children[i]);
+            if (std::holds_alternative<bool>(condition) && std::get<bool>(condition)) {
+                return evaluateNode(node->children[i+1]);
+            }
+        }
     }
+
     return Value();
 }
 

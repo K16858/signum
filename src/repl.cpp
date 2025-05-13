@@ -40,20 +40,18 @@ void REPL::start() {
 
             for (char c : line) {
                 if (c == '{') {
-                    if (c == '{') {
-                        bracketCount++;
-                        multilineInput = true;
-                    }
-                    if (c == '}') {
-                        bracketCount--;
-                    }
+                    bracketCount++;
+                    multilineInput = true;
+                }
+                else if (c == '}') {
+                    bracketCount--;
                 }
             }
 
             bool hasTerminator = !line.empty() && line.back() == ';';
 
             if ((multilineInput && bracketCount > 0) ||
-                (!multilineInput && !hasTerminator && line.empty())) {
+                (!multilineInput && !hasTerminator && !line.empty())) {
                 // コードが続く場合
                 std::cout << ">>> ";
             } 
