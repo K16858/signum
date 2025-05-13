@@ -278,6 +278,7 @@ Value Interpreter::evaluateLogicalExpression(const std::shared_ptr<ASTNode>& nod
     throw std::runtime_error("Invalid logical expression: " + node->toJSON());
 }
 
+// 比較式ノード評価
 Value Interpreter::evaluateComparison(const std::shared_ptr<ASTNode>& node) {
     Value left = evaluateNode(node->children[0]);
     Value right = evaluateNode(node->children[1]);
@@ -349,8 +350,47 @@ Value Interpreter::evaluateComparison(const std::shared_ptr<ASTNode>& node) {
         if (op == "==") return lstr == rstr;
         if (op == "!=") return lstr != rstr;
     }
-    
+
     throw std::runtime_error("Invalid comparison: " + node->toJSON());
+}
+
+// 型変換ノード評価
+Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
+    Value value = evaluateNode(node->children[0]);
+    std::string targetType = node->value;
+
+    if (targetType == "int") {
+        if (std::holds_alternative<double>(value)) {
+            return static_cast<int>(std::get<double>(value));
+        } 
+        else if (std::holds_alternative<std::string>(value)) {
+            return std::stoi(std::get<std::string>(value));
+        }
+    } 
+    else if (targetType == "double") {
+        if (std::holds_alternative<int>(value)) {
+            return static_cast<double>(std::get<int>(value));
+        } 
+        else if (std::holds_alternative<std::string>(value)) {
+            return std::stod(std::get<std::string>(value));
+        }
+    } 
+    else if (targetType == "string") {
+        return valueToString(value);
+    } 
+    else if (targetType == "bool") {
+        if (std::holds_alternative<int>(value)) {
+            return std::get<int>(value) != 0;
+        } 
+        else if (std::holds_alternative<double>(value)) {
+            return std::get<double>(value) != 0.0;
+        } 
+        else if (std::holds_alternative<std::string>(value)) {
+            return !std::get<std::string>(value).empty();
+        }
+    }
+
+    throw std::runtime_error("Invalid cast: " + node->toJSON());
 }
 
 // メモリ参照ノード評価
