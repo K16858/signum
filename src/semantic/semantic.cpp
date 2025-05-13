@@ -312,6 +312,7 @@ MemoryType SemanticAnalyzer::checkCast(const ASTNode* node) {
 void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     if (node->value.empty()) {
         reportError("Function ID is empty");
+        return;
     }
 
     std::string funcID = node->value;
@@ -329,10 +330,13 @@ void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
         reportError("Invalid function ID number: " + funcID);
         idError = true;
     }
-    
-    // すでに定義済みの関数か確認
-    if (functions.count(funcID) > 0 && functions[funcID].isDefined) {
-        reportError("Function " + funcID + " is already defined");
+
+    if (functions.count(funcID) > 0) {
+        // 関数内のステートメントだけチェック
+        for (const auto& child : node->children) {
+            visitNode(child.get());
+        }
+        return;
     }
     
     // 関数を登録

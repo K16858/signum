@@ -176,7 +176,11 @@ Value Interpreter::evaluateFunctionCall(const std::shared_ptr<ASTNode>& node) {
     // 関数の呼び出しを評価
     auto it = functions.find(std::stoi(node->value));
     if (it != functions.end()) {
-        return evaluateNode(it->second);
+        // 関数の中身（子ノード）を順番に実行
+        for (const auto& child : it->second->children) {
+            evaluateNode(child);
+        }
+        return Value();
     }
     throw std::runtime_error("Function not found: " + node->value);
 }
