@@ -1,0 +1,868 @@
+// SigNum Parser
+#include "parser.hpp"
+
+// プログラム全体を解析
+std::shared_ptr<ASTNode> Parser::parseProgram() {
+    auto node = std::make_shared<ASTNode>(NodeType::Program);
+
+    while (pos < tokens.size()) {
+        if (tokens[pos].type == TokenType::End) {
+            break; // 終端トークンに到達
+        }
+        if (tokens[pos].type == TokenType::Semicolon) {
+            advance(); // セミコロンをスキップ
+            continue;
+        }
+        node->children.push_back(parseStatement());
+    }
+
+    return node;
+}
+
+// ステートメントの解析
+std::shared_ptr<ASTNode> Parser::parseStatement() {
+    if (pos >= tokens.size()) {
+        // reportError("Error: Unexpected end of input");
+        // return nullptr;
+        return recoverFromError("Error: Unexpected end of input");
+    }
+    
+    // まずトークンの種類でどう処理するか決める
+    switch (tokens[pos].type) {
+        // メモリ参照から始まるステートメント
+        case TokenType::MemoryRef: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                
+                // 代入系演算子
+                if (nextType == TokenType::Assign || 
+                    nextType == TokenType::PlusEqual || 
+                    nextType == TokenType::MinusEqual ||
+                    nextType == TokenType::MultiplyEqual ||
+                    nextType == TokenType::DivideEqual ||
+                    nextType == TokenType::ModulusEqual) {
+                    return parseAssignment();
+                }
+                // ファイル出力
+                else if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // ファイル入力
+                else if (nextType == TokenType::DoubleRAngleBracket) {
+                    return parseFileInputStatement();
+                }
+                // 四則演算子や比較演算子の場合は式として扱う
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance(); // セミコロンスキップ
+                    }
+                    return expr;
+                }
+            }
+            // 単独メモリ参照
+            auto ref = parseMemoryRef();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return ref;
+        }
+
+        // ファイル入出力
+        case TokenType::String: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                // ファイル出力
+                if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // ファイル入力
+                else if (nextType == TokenType::DoubleRAngleBracket) {
+                    return parseFileInputStatement();
+                }
+            }
+            else {
+                // reportError("Error: Unexpected end of input after string token");
+                // return nullptr;
+                return recoverFromError("Error: Unexpected end of input after string token");
+            }
+        }
+
+        // 関数呼び出し
+        case TokenType::FunctionCall:
+            return parseFunctionCall();
+        
+        // 関数定義
+        case TokenType::Function:
+            return parseFunction();
+
+        // 条件式関連
+        case TokenType::Not:
+        case TokenType::And:
+        case TokenType::Or:
+            return parseCondition();
+            
+        // 条件分岐
+        case TokenType::If:
+        case TokenType::ElseIf:
+        case TokenType::Else:
+            return parseIfStatement();
+            
+        // ループ
+        case TokenType::Loop:
+            return parseLoopStatement();
+
+        //  出力文
+        case TokenType::LAngleBracket:
+            return parseOutputStatement();
+        
+        // 入力文
+        case TokenType::RAngleBracket:
+            return parseInputStatement();
+
+        // ファイル出力文
+        case TokenType::DoubleLAngleBracket:
+            return parseFileOutputStatement();
+
+        // ファイル入力文
+        case TokenType::DoubleRAngleBracket:
+            return parseFileInputStatement();
+        
+        case TokenType::IntCast:
+        case TokenType::FloatCast:
+        case TokenType::StrCast:
+        case TokenType::BoolCast:
+            return parseCast(); // 型変換の解析
+            
+        // その他の開始トークン（数値や文字列など）
+        default:
+            auto expr = parseExpression();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return expr;
+    }
+}
+
+// メモリ参照の解析
+std::shared_ptr<ASTNode> Parser::parseMemoryRef() {
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto node = std::make_shared<ASTNode>(NodeType::MemoryRef, tokens[pos].value);
+        advance();
+        return node;
+    }
+
+    // reportError("Error: Expected memory reference");
+    // return nullptr;
+    return recoverFromError("Error: Expected memory reference");
+}
+
+// 加減算式の解析
+std::shared_ptr<ASTNode> Parser::parseExpression() {
+    debugLog("加減算式を解析中...");
+    auto left = parseTerm(); // 乗除算を先に処理
+
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::Plus || tokens[pos].type == TokenType::Minus)) {
+        auto op = tokens[pos].value;
+        advance();
+        
+        auto right = parseTerm();
+        auto node = std::make_shared<ASTNode>(NodeType::ArithmeticExpression, op);
+        node->children.push_back(std::move(left));
+        node->children.push_back(std::move(right));
+        left = std::move(node);
+    }
+    
+    return left;
+}
+
+// 乗除算式の解析
+std::shared_ptr<ASTNode> Parser::parseTerm() {
+    debugLog("乗除算式を解析中...");
+    auto left = parseFactor(); // 左辺の因子
+
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::Multiply || tokens[pos].type == TokenType::Divide || tokens[pos].type == TokenType::Modulus)) {
+        auto op = tokens[pos].value;
+        advance(); // 演算子をスキップ
+        
+        auto right = parseFactor(); // 右辺の因子
+        auto node = std::make_shared<ASTNode>(NodeType::ArithmeticExpression, op);
+        node->children.push_back(std::move(left));
+        node->children.push_back(std::move(right)); // 右辺の因子
+        left = std::move(node); // 左辺を更新
+    }
+
+    return left; // 演算子がなければ左辺だけを返す
+}
+
+// 因子の解析
+std::shared_ptr<ASTNode> Parser::parseFactor() {
+    debugLog("因子を解析中...");
+
+    if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
+        debugLog("数値を解析中...");
+        auto node = std::make_shared<ASTNode>(NodeType::Number, tokens[pos].value);
+        advance();
+        return node;
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        debugLog("文字列を解析中...");
+        auto node = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        advance();
+        return node;
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
+        auto node = parseMemoryRef();
+        return node;
+    } 
+    else if (tokens[pos].type == TokenType::LParen) {
+        debugLog("括弧を解析中...");
+        advance(); // "("
+        auto node = parseExpression(); // 括弧内の式を解析
+        if (tokens[pos].type != TokenType::RParen) {
+            // reportError("Expected ')' after expression in factor");
+            // return nullptr;
+            return recoverFromError("Expected ')' after expression in factor");
+        }
+        advance(); // ")"
+        return node;
+    } 
+    else if (tokens[pos].type == TokenType::IntCast ||
+        tokens[pos].type == TokenType::FloatCast ||
+        tokens[pos].type == TokenType::StrCast ||
+        tokens[pos].type == TokenType::BoolCast) {
+        debugLog("型変換を解析中...");
+        return parseCast();
+    }
+    else {
+        // reportError("Error: Expected factor");
+        // return nullptr;
+        return recoverFromError("Error: Expected factor");
+    }
+
+}
+
+// 代入文と複合代入の解析
+std::shared_ptr<ASTNode> Parser::parseAssignment() {
+    debugLog("代入文を解析中...");
+    
+    auto left = parseMemoryRef(); // 左辺のメモリ参照
+    if (!left) {
+        // reportError("Error: Expected memory reference on left side of assignment");
+        // return nullptr;
+        return recoverFromError("Error: Expected memory reference on left side of assignment");
+    }
+
+    // 演算子タイプを確認
+    TokenType opType = tokens[pos].type;
+    std::string opValue = tokens[pos].value;
+    advance(); // 演算子をスキップ
+    
+    std::string leftValue = left->value;
+
+    auto node = std::make_shared<ASTNode>(NodeType::Assignment, opValue);
+    node->children.push_back(std::move(left));
+
+    // 通常の代入
+    if (opType == TokenType::Assign) {
+        node->children.push_back(parseExpression());
+    } 
+    // 複合代入（+=, -=, *=, /=, %=）
+    else {
+        // 左辺のコピーを作成
+        auto leftCopy = std::make_shared<ASTNode>(NodeType::MemoryRef, leftValue);
+
+        // 演算子抽出
+        std::string actualOp;
+        if (opType == TokenType::PlusEqual) {
+            actualOp = "+";
+        }
+        else if (opType == TokenType::MinusEqual) {
+            actualOp = "-";
+        }
+        else if (opType == TokenType::MultiplyEqual) {
+            actualOp = "*";
+        }
+        else if (opType == TokenType::DivideEqual) {
+            actualOp = "/";
+        }
+        else if (opType == TokenType::ModulusEqual) {
+            actualOp = "%";
+        }
+        else {
+            // reportError("Error: Unknown compound assignment operator");
+            // return nullptr;
+            return recoverFromError("Error: Unknown compound assignment operator");
+        }
+
+        // 右辺の式を構築
+        auto right = std::make_shared<ASTNode>(NodeType::ArithmeticExpression, actualOp);
+        right->children.push_back(std::move(leftCopy));
+        right->children.push_back(parseExpression());
+        
+        node->children.push_back(std::move(right));
+    }
+        
+    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+        advance();
+    }
+
+    return node;
+}
+
+// 比較演算の解析
+std::shared_ptr<ASTNode> Parser::parseComparison() {
+    debugLog("比較演算を解析中...");
+    auto left = parseExpression(); // 左辺の式
+
+    if (pos < tokens.size() && (
+        tokens[pos].type == TokenType::EqualTo ||
+        tokens[pos].type == TokenType::NotEqualTo ||
+        tokens[pos].type == TokenType::LAngleBracket ||
+        tokens[pos].type == TokenType::RAngleBracket ||
+        tokens[pos].type == TokenType::LessThanOrEqual ||
+        tokens[pos].type == TokenType::GreaterThanOrEqual)) {
+        
+        // 比較ノードを作成
+        auto node = std::make_shared<ASTNode>(NodeType::Comparison, tokens[pos].value);
+        node->children.push_back(std::move(left));
+        
+        advance(); //　比較演算子
+        
+        node->children.push_back(parseExpression()); // 右辺
+        
+        return node;
+    }
+
+    return left;
+}
+
+// 条件式の解析
+std::shared_ptr<ASTNode> Parser::parseCondition() {
+    debugLog("条件式を解析中...");
+    
+    // NOTの処理
+    if (tokens[pos].type == TokenType::Not) {
+        auto node = std::make_shared<ASTNode>(NodeType::LogicalExpression, "!");
+        advance(); // "!" をスキップ
+        node->children.push_back(parseCondition()); // NOTの後の式
+        return node;
+    }
+    
+    // 最初の比較式
+    auto left = parseComparison();
+    
+    // AND/ORが続く場合
+    while (pos < tokens.size() && (tokens[pos].type == TokenType::And || tokens[pos].type == TokenType::Or)) {
+        auto op = tokens[pos].value; // "&&"  "||"
+        advance();
+        
+        auto right = parseComparison(); // 右辺
+        auto node = std::make_shared<ASTNode>(NodeType::LogicalExpression, op);
+        node->children.push_back(std::move(left));
+        node->children.push_back(std::move(right));
+        left = std::move(node);
+    }
+    
+    return left;
+}
+
+// 条件分岐の解析
+std::shared_ptr<ASTNode> Parser::parseIfStatement() {
+    debugLog("条件分岐を解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::IfStatement);
+    advance(); // "if"
+
+    if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseCondition()); // 条件式
+
+        if (tokens[pos].type != TokenType::RParen) {
+            // reportError("Expected ')' after condition in if statement");
+            // return nullptr;
+            return recoverFromError("Expected ')' after condition in if statement");
+        } 
+        advance(); // ")"
+    } 
+    else {
+        // reportError("Expected '(' after 'if'");
+        // return nullptr;
+        return recoverFromError("Expected '(' after 'if'");
+    }
+
+    // thenの解析
+    if (tokens[pos].type == TokenType::LBrace) {
+        advance(); // "{"
+        auto thenNode = std::make_shared<ASTNode>(NodeType::Statement);
+        while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+            thenNode->children.push_back(parseStatement());
+        }
+
+        if (tokens[pos].type != TokenType::RBrace) {
+            // reportError("Expected '}' after then block in if statement");
+            // return nullptr;
+            return recoverFromError("Expected '}' after then block in if statement");
+        }
+        advance(); // "}"
+
+        node->children.push_back(std::move(thenNode)); // thenを追加
+
+        while (pos < tokens.size() && tokens[pos].type == TokenType::Else) {
+            advance(); // "else"
+            
+            // else if の場合
+            if (pos < tokens.size() && tokens[pos].type == TokenType::If) {
+                // else if部分を再帰的に解析して、子ノードとして追加
+                node->children.push_back(parseIfStatement());
+                // parseIfStatementが戻ったらループを抜ける
+                break;
+            }
+            // else の場合
+            else if (tokens[pos].type == TokenType::LBrace) {
+                advance(); // "{"
+                auto elseNode = std::make_shared<ASTNode>(NodeType::Statement);
+                while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+                    elseNode->children.push_back(parseStatement());
+                }
+
+                if (tokens[pos].type != TokenType::RBrace) {
+                    // reportError("Expected '}' after else block in if statement");
+                    // return nullptr;
+                    return recoverFromError("Expected '}' after else block in if statement");
+                }
+                advance(); // "}"
+                
+                node->children.push_back(std::move(elseNode)); // elseを追加
+            } 
+            else {
+                // reportError("Expected '{' or 'if' after 'else' in if statement");
+                // return nullptr;
+                return recoverFromError("Expected '{' or 'if' after 'else' in if statement");
+            }
+        }
+    }
+    else {
+        // reportError("Expected '{' after condition in if statement");
+        // return nullptr;
+        return recoverFromError("Expected '{' after condition in if statement");
+    }
+
+    return node;
+}
+
+// ループの解析
+std::shared_ptr<ASTNode> Parser::parseLoopStatement() {
+    debugLog("ループを解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::LoopStatement);
+    advance(); // "&"をスキップ
+
+    // ループ条件の解析
+    if (tokens[pos].type == TokenType::LParen) {
+        advance(); // "("
+        node->children.push_back(parseCondition()); // 条件式
+
+        if (tokens[pos].type != TokenType::RParen) {
+            // reportError("Expected ')' after condition in loop statement");
+            // return nullptr;
+            return recoverFromError("Expected ')' after condition in loop statement");
+        } 
+        advance(); // ")"
+    } 
+    else {
+        // reportError("Expected '(' after 'loop'");
+        // return nullptr;
+        return recoverFromError("Expected '(' after 'loop'");
+    }
+    
+    // ループブロックの解析
+    if (tokens[pos].type == TokenType::LBrace) {
+        advance(); // "{"
+        auto loopNode = std::make_shared<ASTNode>(NodeType::Statement);
+        while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+            loopNode->children.push_back(parseStatement());
+        }
+
+        if (tokens[pos].type != TokenType::RBrace) {
+            // reportError("Expected '}' after loop block");
+            // return nullptr;
+            return recoverFromError("Expected '}' after loop block");
+        }
+        advance(); // "}"
+        
+        node->children.push_back(std::move(loopNode)); // ループ本体を追加
+    } 
+    else {
+        // reportError("Expected '{' after loop condition");
+        // return nullptr;
+        return recoverFromError("Expected '{' after loop condition");
+    }
+
+    return node;
+}
+
+// 出力文の解析
+std::shared_ptr<ASTNode> Parser::parseOutputStatement() {
+    debugLog("出力文を解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::OutputStatement);
+    advance(); // "<" をスキップ
+    
+    // 出力する式を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            // reportError("Expected memory reference in output statement");
+            // return nullptr;
+            return recoverFromError("Expected memory reference in output statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        auto strNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(strNode));
+    } 
+    else {
+        auto expr = parseExpression();
+        if (!expr) {
+            // reportError("Expected expression in output statement");
+            // return nullptr;
+            return recoverFromError("Expected expression in output statement");
+        }
+        node->children.push_back(std::move(expr));
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after output statement");
+        // return nullptr;
+        return recoverFromError("Expected ';' after output statement");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+// 入力文の解析
+std::shared_ptr<ASTNode> Parser::parseInputStatement() {
+    debugLog("入力文を解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::InputStatement);
+    advance(); // ">" をスキップ
+    
+    // 入力するメモリ参照を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            // reportError("Expected memory reference in input statement");
+            // return nullptr;
+            return recoverFromError("Expected memory reference in input statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else {
+        // reportError("Expected memory reference in input statement");
+        // return nullptr;
+        return recoverFromError("Expected memory reference in input statement");
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after input statement");
+        // return nullptr;
+        return recoverFromError("Expected ';' after input statement");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+// ファイル出力文の解析
+std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
+    debugLog("ファイル出力文を解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::FileOutputStatement);
+
+    // ファイル名の解析（文字列かメモリ参照）
+    if (tokens[pos].type == TokenType::String) {
+        auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(fileNode));
+    } else if (tokens[pos].type == TokenType::MemoryRef) {
+        auto fileNode = parseMemoryRef();
+        if (!fileNode) {
+            // reportError("Expected memory reference for file name");
+            // return nullptr;
+            return recoverFromError("Expected memory reference for file name");
+        }
+        node->children.push_back(std::move(fileNode));
+    } else {
+        // reportError("Expected string or memory reference for file name");
+        // return nullptr;
+        return recoverFromError("Expected string or memory reference for file name");
+    }
+    
+    // "<<"" をチェック
+    if (tokens[pos].type != TokenType::DoubleLAngleBracket) {
+        // reportError("Expected '<<' after file name in file output statement");
+        // return nullptr;
+        return recoverFromError("Expected '<<' after file name in file output statement");
+    }
+    advance(); // "<<"
+    
+    // 出力する式を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            // reportError("Expected memory reference in file output statement");
+            // return nullptr;
+            return recoverFromError("Expected memory reference in file output statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else if (tokens[pos].type == TokenType::String) {
+        auto strNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(strNode));
+    } 
+    else {
+        auto expr = parseExpression();
+        if (!expr) {
+            // reportError("Expected expression in file output statement");
+            // return nullptr;
+            return recoverFromError("Expected expression in file output statement");
+        }
+        node->children.push_back(std::move(expr));
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after file output statement");
+        // return nullptr;
+        return recoverFromError("Expected ';' after file output statement");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+// ファイル入力文の解析
+std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
+    debugLog("ファイル入力文を解析中...");
+    auto node = std::make_shared<ASTNode>(NodeType::FileInputStatement);
+
+    // ファイル名の解析（文字列かメモリ参照）
+    if (tokens[pos].type == TokenType::String) {
+        auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        advance(); // 文字列をスキップ
+        node->children.push_back(std::move(fileNode));
+    } else if (tokens[pos].type == TokenType::MemoryRef) {
+        auto fileNode = parseMemoryRef();
+        if (!fileNode) {
+            // reportError("Expected memory reference for file name");
+            // return nullptr;
+            return recoverFromError("Expected memory reference for file name");
+        }
+        node->children.push_back(std::move(fileNode));
+    } else {
+        // reportError("Expected string or memory reference for file name");
+        // return nullptr;
+        return recoverFromError("Expected string or memory reference for file name");
+    }
+    
+    // ">>" をチェック
+    if (tokens[pos].type != TokenType::DoubleRAngleBracket) {
+        // reportError("Expected '>>' after file name in file input statement");
+        // return nullptr;
+        return recoverFromError("Expected '>>' after file name in file input statement");
+    }
+    advance(); // ">>"
+    
+    // 入力するメモリ参照を解析
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        auto ref = parseMemoryRef();
+        if (!ref) {
+            // reportError("Expected memory reference in file input statement");
+            // return nullptr;
+            return recoverFromError("Expected memory reference in file input statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else {
+        // reportError("Expected memory reference in file input statement");
+        // return nullptr;
+        return recoverFromError("Expected memory reference in file input statement");
+    }
+    
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after file input statement");
+        // return nullptr;
+        return recoverFromError("Expected ';' after file input statement");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+// 関数の解析
+std::shared_ptr<ASTNode> Parser::parseFunction() {
+    debugLog("関数を解析中...");
+    // 関数番号の取得
+    std::string tokenValue = tokens[pos].value;
+    std::string functionNumber;
+    
+    if (tokenValue.size() >= 3 && tokenValue.substr(0, 1) == "_") {
+        functionNumber = tokenValue.substr(1);
+    } 
+    else {
+        // reportError("Invalid function call format. Expected $_XXX where X is a digit.");
+        // return nullptr;
+        return recoverFromError("Invalid function call format. Expected $_XXX where X is a digit.");
+    }
+    
+    // 関数番号の検証
+    if (functionNumber.size() != 3 || 
+        !std::isdigit(functionNumber[0]) || 
+        !std::isdigit(functionNumber[1]) || 
+        !std::isdigit(functionNumber[2])) {
+        // reportError("Invalid function number format. Expected $_XXX where X is a digit.");
+        // return nullptr;
+        return recoverFromError("Invalid function number format. Expected $_XXX where X is a digit.");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::Function, functionNumber);
+    advance(); // 関数定義トークンをスキップ
+
+    if (tokens[pos].type != TokenType::LBrace) {
+        // reportError("Expected '{' after function definition");
+        // return nullptr;
+        return recoverFromError("Expected '{' after function definition");
+    }
+    advance(); // "{"
+    
+    while (pos < tokens.size() && tokens[pos].type != TokenType::RBrace) {
+        node->children.push_back(parseStatement());
+    }
+
+    if (tokens[pos].type != TokenType::RBrace) {
+        // reportError("Expected '}' after function body");
+        // return nullptr;
+        return recoverFromError("Expected '}' after function body");
+    }
+    advance(); // "}"
+
+    return node;
+}
+
+// 関数呼び出しの解析
+std::shared_ptr<ASTNode> Parser::parseFunctionCall() {
+    debugLog("関数呼び出しを解析中...");
+    
+    // 関数番号の取得
+    std::string tokenValue = tokens[pos].value;
+    std::string functionNumber;
+    
+    if (tokenValue.size() >= 3 && tokenValue.substr(0, 2) == "$_") {
+        functionNumber = tokenValue.substr(2);
+    } 
+    else {
+        // reportError("Invalid function call format. Expected $_XXX where X is a digit.");
+        // return nullptr;
+        return recoverFromError("Invalid function call format. Expected $_XXX where X is a digit.");
+    }
+    
+    // 関数番号の検証
+    if (functionNumber.size() != 3 || 
+        !std::isdigit(functionNumber[0]) || 
+        !std::isdigit(functionNumber[1]) || 
+        !std::isdigit(functionNumber[2])) {
+        // reportError("Invalid function number format. Expected $_XXX where X is a digit.");
+        // return nullptr;
+        return recoverFromError("Invalid function number format. Expected $_XXX where X is a digit.");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::FunctionCall, functionNumber);
+    advance(); // 関数呼び出しトークンをスキップ
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after function call");
+        // return nullptr;
+        return recoverFromError("Expected ';' after function call");
+    }
+    advance(); // セミコロンをスキップ
+    
+    return node;
+}
+
+// 型変換の解析
+std::shared_ptr<ASTNode> Parser::parseCast() {
+    debugLog("型変換を解析中...");
+    
+    // キャスト種類を保存
+    std::string castType;
+    if (tokens[pos].type == TokenType::IntCast) castType = "int";
+    else if (tokens[pos].type == TokenType::FloatCast) castType = "float";
+    else if (tokens[pos].type == TokenType::StrCast) castType = "string";
+    else if (tokens[pos].type == TokenType::BoolCast) castType = "bool";
+    else {
+        // reportError("Expected cast type (int, float, string, bool)");
+        // return nullptr;
+        return recoverFromError("Expected cast type (int, float, string, bool)");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::Cast, castType);
+    advance(); // キャストトークンをスキップ
+    
+    // キャストする対象の式
+    auto expr = parseExpression();
+    if (!expr) {
+        // reportError("Expected expression for cast");
+        // return nullptr;
+        return recoverFromError("Expected expression for cast");
+    }
+    node->children.push_back(std::move(expr));
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        // reportError("Expected ';' after cast expression");
+        // return nullptr;
+        return recoverFromError("Expected ';' after cast expression");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+std::shared_ptr<ASTNode> Parser::recoverFromError(const std::string& message) {
+    reportError(message);
+    synchronize(); // 次のポイントまでスキップ
+
+    return std::make_shared<ASTNode>(NodeType::Error, message); // エラーを示すノードを返す
+}
+
+// エラー回復用
+void Parser::synchronize() {
+    // ファイル終端
+    if (pos >= tokens.size()) return;
+    
+    advance(); // エラーのあるトークンをスキップ
+    
+    // 安全なポイントに達するまでスキップ
+    while (pos < tokens.size()) {
+        // セミコロンを見つけたらそこで同期完了
+        if (tokens[pos-1].type == TokenType::Semicolon) {
+            return;
+        }
+        
+        // ブロックの終わりも同期ポイント
+        if (tokens[pos].type == TokenType::RBrace) {
+            return;
+        }
+        switch (tokens[pos].type) {
+            case TokenType::Function:
+            case TokenType::If:
+            case TokenType::Else:
+            case TokenType::Loop:
+            case TokenType::LAngleBracket:
+            case TokenType::RAngleBracket:
+                return;
+            default:
+                advance();
+        }
+    }
+}
