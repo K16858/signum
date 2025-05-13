@@ -20,7 +20,7 @@ void REPL::start() {
 
         std::string line;
         while (std::getline(std::cin, line)) {
-            if (!multilineInput && inputBuffer.empty()) {
+            if (inputBuffer.empty()) {
                 if (line == ".exit" || line == ".quit") {
                     running = false;
                     std::cout << "Exiting REPL..." << std::endl;
