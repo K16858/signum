@@ -5,13 +5,18 @@
 
 // メモリ参照を解決する
 Value Interpreter::resolveMemoryRef(const std::string& ref) {
-    if (ref[0] == '#') {
+    int startPos = (ref[0] == '$') ? 1 : 0;
+
+    if (ref[startPos] == '#') {
         return intPool[std::stoi(ref.substr(2))];
-    } else if (ref[0] == '@') {
+    } 
+    else if (ref[startPos] == '@') {
         return stringPool[std::stoi(ref.substr(2))];
-    } else if (ref[0] == '~') {
+    } 
+    else if (ref[startPos] == '~') {
         return floatPool[std::stoi(ref.substr(2))];
-    } else if (ref[0] == '%') {
+    } 
+    else if (ref[startPos] == '%') {
         return boolPool[std::stoi(ref.substr(2))];
     }
     throw std::runtime_error("Invalid memory reference: " + ref);
@@ -19,13 +24,18 @@ Value Interpreter::resolveMemoryRef(const std::string& ref) {
 
 // メモリインデックスを評価する
 int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
-    if (indexExpr[0] == '#') {
+    int startPos = (indexExpr[0] == '$') ? 1 : 0;
+
+    if (indexExpr[startPos] == '#') {
         return std::stoi(indexExpr.substr(2));
-    } else if (indexExpr[0] == '@') {
+    } 
+    else if (indexExpr[startPos] == '@') {
         return std::stoi(indexExpr.substr(2));
-    } else if (indexExpr[0] == '~') {
+    } 
+    else if (indexExpr[startPos] == '~') {
         return std::stoi(indexExpr.substr(2));
-    } else if (indexExpr[0] == '%') {
+    } 
+    else if (indexExpr[startPos] == '%') {
         return std::stoi(indexExpr.substr(2));
     }
     throw std::runtime_error("Invalid memory index: " + indexExpr);
