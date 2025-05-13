@@ -1,7 +1,6 @@
 #include "repl.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
-#include "semantic/semantic.hpp"
 #include <iostream>
 #include <string>
 
@@ -99,7 +98,6 @@ void REPL::executeCode(const std::string& code) {
         auto ast = parser.parseProgram();
 
         if (ast) {
-            SemanticAnalyzer analyzer;
             if (analyzer.analyze(ast)) {
                 interpreter.interpret(ast);
             }
