@@ -30,6 +30,23 @@ int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
     throw std::runtime_error("Invalid memory index: " + indexExpr);
 }
 
+// 値を文字列に変換
+std::string Interpreter::valueToString(const Value& val) {
+    if (std::holds_alternative<int>(val)) {
+        return std::to_string(std::get<int>(val));
+    }
+    else if (std::holds_alternative<double>(val)) {
+        return std::to_string(std::get<double>(val));
+    }
+    else if (std::holds_alternative<bool>(val)) {
+        return std::get<bool>(val) ? "true" : "false";
+    }
+    else if (std::holds_alternative<std::string>(val)) {
+        return std::get<std::string>(val);
+    }
+    return ""; // 未対応の型の場合
+}
+
 // 実行
 void Interpreter::interpret(const std::shared_ptr<ASTNode>& program) {
     evaluateNode(program);
@@ -230,19 +247,122 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
     throw std::runtime_error("Invalid arithmetic expression: " + node->toJSON());
 }
 
-// 値を文字列に変換
-std::string Interpreter::valueToString(const Value& val) {
-    if (std::holds_alternative<int>(val)) {
-        return std::to_string(std::get<int>(val));
+// 論理式ノード評価
+Value Interpreter::evaluateLogicalExpression(const std::shared_ptr<ASTNode>& node) {
+    // 単項式
+    if (node->children.size() == 1) {
+        // 単項否定
+        if (node->value == "!") {
+            Value childValue = evaluateNode(node->children[0]);
+            if (std::holds_alternative<bool>(childValue)) {
+                return !std::get<bool>(childValue);
+            }
+            throw std::runtime_error("Invalid logical negation: " + node->toJSON());
+        }
+        return evaluateNode(node->children[0]);
+    } 
+    // 二項式
+    else if (node->children.size() == 2) {
+        Value left = evaluateNode(node->children[0]);
+        Value right = evaluateNode(node->children[1]);
+        std::string op = node->value;
+
+        if (std::holds_alternative<bool>(left) && std::holds_alternative<bool>(right)) {
+            bool lval = std::get<bool>(left);
+            bool rval = std::get<bool>(right);
+            
+            if (op == "&&") return lval && rval;
+            if (op == "||") return lval || rval;
+        }
     }
-    else if (std::holds_alternative<double>(val)) {
-        return std::to_string(std::get<double>(val));
-    }
-    else if (std::holds_alternative<bool>(val)) {
-        return std::get<bool>(val) ? "true" : "false";
-    }
-    else if (std::holds_alternative<std::string>(val)) {
-        return std::get<std::string>(val);
-    }
-    return ""; // 未対応の型の場合
+    throw std::runtime_error("Invalid logical expression: " + node->toJSON());
 }
+
+Value Interpreter::evaluateComparison(const std::shared_ptr<ASTNode>& node) {
+    Value left = evaluateNode(node->children[0]);
+    Value right = evaluateNode(node->children[1]);
+    std::string op = node->value;
+
+    if (std::holds_alternative<int>(left) && std::holds_alternative<int>(right)) {
+        int lval = std::get<int>(left);
+        int rval = std::get<int>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+        if (op == "<") return lval < rval;
+        if (op == "<=") return lval <= rval;
+        if (op == ">") return lval > rval;
+        if (op == ">=") return lval >= rval;
+    }
+    else if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
+        double lval = std::get<double>(left);
+        double rval = std::get<double>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+        if (op == "<") return lval < rval;
+        if (op == "<=") return lval <= rval;
+        if (op == ">") return lval > rval;
+        if (op == ">=") return lval >= rval;
+    } 
+    else if (std::holds_alternative<int>(left) && std::holds_alternative<double>(right)) {
+        int lval = std::get<int>(left);
+        double rval = std::get<double>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+        if (op == "<") return lval < rval;
+        if (op == "<=") return lval <= rval;
+        if (op == ">") return lval > rval;
+        if (op == ">=") return lval >= rval;
+    } 
+    else if (std::holds_alternative<double>(left) && std::holds_alternative<int>(right)) {
+        double lval = std::get<double>(left);
+        int rval = std::get<int>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+        if (op == "<") return lval < rval;
+        if (op == "<=") return lval <= rval;
+        if (op == ">") return lval > rval;
+        if (op == ">=") return lval >= rval;
+    }
+    else if (std::holds_alternative<bool>(left) && std::holds_alternative<bool>(right)) {
+        bool lval = std::get<bool>(left);
+        bool rval = std::get<bool>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+    }
+    else if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right)) {
+        std::string lval = std::get<std::string>(left);
+        std::string rval = std::get<std::string>(right);
+        
+        if (op == "==") return lval == rval;
+        if (op == "!=") return lval != rval;
+    }
+
+    if (op == "==" || op == "!=") {
+        std::string lstr = valueToString(left);
+        std::string rstr = valueToString(right);
+        
+        if (op == "==") return lstr == rstr;
+        if (op == "!=") return lstr != rstr;
+    }
+    
+    throw std::runtime_error("Invalid comparison: " + node->toJSON());
+}
+
+// メモリ参照ノード評価
+Value Interpreter::evaluateMemoryRef(const std::shared_ptr<ASTNode>& node) {
+    return resolveMemoryRef(node->value);
+}
+
+Value Interpreter::evaluateNumber(const std::shared_ptr<ASTNode>& node) {
+    return std::stoi(node->value);
+}
+
+Value Interpreter::evaluateString(const std::shared_ptr<ASTNode>& node) {
+    return node->value;
+}
+
