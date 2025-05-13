@@ -6,7 +6,20 @@
 // メモリ参照を解決する
 Value Interpreter::resolveMemoryRef(const std::string& ref) {
     int startPos = (ref[0] == '$') ? 1 : 0;
-
+    
+    // ネストされた参照チェック
+    size_t nextDollar = ref.find('$', startPos + 1);
+    if (nextDollar != std::string::npos) {
+        // ネストされた参照を先に評価
+        std::string nestedRef = ref.substr(nextDollar);
+        int nestedIndex = std::get<int>(resolveMemoryRef(nestedRef));
+        
+        // 外側の参照タイプを使って最終的な値を取得
+        char type = ref[startPos];
+        return getMemoryValue(type, nestedIndex);
+    }
+    
+    // 通常の参照処理
     if (ref[startPos] == '#') {
         return intPool[std::stoi(ref.substr(startPos + 1))];
     } 
@@ -25,19 +38,25 @@ Value Interpreter::resolveMemoryRef(const std::string& ref) {
 // メモリインデックスを評価する
 int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
     int startPos = (indexExpr[0] == '$') ? 1 : 0;
-
-    if (indexExpr[startPos] == '#') {
-        return std::stoi(indexExpr.substr(startPos + 1));
-    } 
-    else if (indexExpr[startPos] == '@') {
-        return std::stoi(indexExpr.substr(startPos + 1));
-    } 
-    else if (indexExpr[startPos] == '~') {
-        return std::stoi(indexExpr.substr(startPos + 1));
-    } 
-    else if (indexExpr[startPos] == '%') {
-        return std::stoi(indexExpr.substr(startPos + 1));
+    
+    if (indexExpr[startPos] == '#' || 
+        indexExpr[startPos] == '@' || 
+        indexExpr[startPos] == '~' || 
+        indexExpr[startPos] == '%') {
+        
+        // ネストされたメモリ参照かチェック
+        size_t nextDollar = indexExpr.find('$', startPos + 1);
+        if (nextDollar != std::string::npos) {
+            // ネストされた参照を先に評価
+            std::string nestedRef = indexExpr.substr(nextDollar);
+            int nestedValue = std::get<int>(resolveMemoryRef(nestedRef));
+            return nestedValue;
+        } else {
+            // 通常の参照
+            return std::stoi(indexExpr.substr(startPos + 1));
+        }
     }
+    
     throw std::runtime_error("Invalid memory index: " + indexExpr);
 }
 
