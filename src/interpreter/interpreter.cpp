@@ -8,16 +8,16 @@ Value Interpreter::resolveMemoryRef(const std::string& ref) {
     int startPos = (ref[0] == '$') ? 1 : 0;
 
     if (ref[startPos] == '#') {
-        return intPool[std::stoi(ref.substr(2))];
+        return intPool[std::stoi(ref.substr(startPos + 1))];
     } 
     else if (ref[startPos] == '@') {
-        return stringPool[std::stoi(ref.substr(2))];
+        return stringPool[std::stoi(ref.substr(startPos + 1))];
     } 
     else if (ref[startPos] == '~') {
-        return floatPool[std::stoi(ref.substr(2))];
+        return floatPool[std::stoi(ref.substr(startPos + 1))];
     } 
     else if (ref[startPos] == '%') {
-        return boolPool[std::stoi(ref.substr(2))];
+        return boolPool[std::stoi(ref.substr(startPos + 1))];
     }
     throw std::runtime_error("Invalid memory reference: " + ref);
 }
@@ -27,16 +27,16 @@ int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
     int startPos = (indexExpr[0] == '$') ? 1 : 0;
 
     if (indexExpr[startPos] == '#') {
-        return std::stoi(indexExpr.substr(2));
+        return std::stoi(indexExpr.substr(startPos + 1));
     } 
     else if (indexExpr[startPos] == '@') {
-        return std::stoi(indexExpr.substr(2));
+        return std::stoi(indexExpr.substr(startPos + 1));
     } 
     else if (indexExpr[startPos] == '~') {
-        return std::stoi(indexExpr.substr(2));
+        return std::stoi(indexExpr.substr(startPos + 1));
     } 
     else if (indexExpr[startPos] == '%') {
-        return std::stoi(indexExpr.substr(2));
+        return std::stoi(indexExpr.substr(startPos + 1));
     }
     throw std::runtime_error("Invalid memory index: " + indexExpr);
 }
@@ -161,7 +161,10 @@ Value Interpreter::evaluateFunctionCall(const std::shared_ptr<ASTNode>& node) {
 Value Interpreter::evaluateAssignment(const std::shared_ptr<ASTNode>& node) {
     std::string varName = node->children[0]->value;
     Value value = evaluateNode(node->children[1]);
-    setMemoryValue(varName[0], evaluateMemoryIndex(varName), value);
+
+    int startPos = (varName[0] == '$') ? 1 : 0;
+
+    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), value);
     return value;
 }
 
