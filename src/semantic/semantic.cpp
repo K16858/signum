@@ -15,11 +15,40 @@ std::string memoryTypeToString(MemoryType type) {
 // メインの解析関数
 bool SemanticAnalyzer::analyze(const std::shared_ptr<ASTNode>& root) {
     if (!root) return false;
-    
+    // 1パス目：関数定義を収集
+    collectFunctionDefinitions(root.get());
+
+    // 2パス目：ノードを巡回して意味解析を行う
     visitNode(root.get());
     return errors.empty();
 }
 
+// 関数定義収集
+void SemanticAnalyzer::collectFunctionDefinitions(const ASTNode* node) {
+    if (!node) return;
+    
+    // 関数定義を見つけたら登録
+    if (node->type == NodeType::Function) {
+        std::string funcID = node->value;
+        bool idError = false;
+        
+        try {
+            int funcIDInt = std::stoi(funcID);
+            if (funcIDInt < 1 || funcIDInt > 999) {
+                idError = true;
+            }
+        } catch (...) {
+            idError = true;
+        }
+        
+        // 関数を登録
+        functions[funcID] = {funcID, !idError};
+    }
+
+    for (const auto& child : node->children) {
+        collectFunctionDefinitions(child.get());
+    }
+}
 // ノード巡回関数
 MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
     if (!node) return MemoryType::Integer; // デフォルト値
@@ -288,23 +317,17 @@ void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     std::string funcID = node->value;
     bool idError = false;
     
-    // 関数IDのフォーマットチェック
-    if (funcID.size() < 2 || funcID[0] != '_') {
-        reportError("Invalid function ID format: " + funcID);
-        idError = true;
-    } else {
-        // 数字部分のチェック
-        try {
-            std::string numPart = funcID.substr(1); // アンダースコアを除いた部分
-            int funcIDInt = std::stoi(numPart);
-            if (funcIDInt < 1 || funcIDInt > 99) {
-                reportError("Function ID: " + numPart + " is not in range 001-099");
-                idError = true;
-            }
-        } catch (const std::exception& e) {
-            reportError("Invalid function ID number: " + funcID);
+    // 数字のみで構成されているかチェック
+    try {
+        int funcIDInt = std::stoi(funcID);
+        if (funcIDInt < 1 || funcIDInt > 999) {
+            reportError("Function ID: " + funcID + " is not in range 001-999");
             idError = true;
         }
+    } 
+    catch (const std::exception& e) {
+        reportError("Invalid function ID number: " + funcID);
+        idError = true;
     }
     
     // すでに定義済みの関数か確認
