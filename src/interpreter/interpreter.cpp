@@ -119,6 +119,11 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateFunction(node);
         case NodeType::FunctionCall:
             return evaluateFunctionCall(node);
+        case NodeType::Statement:
+            for (const auto& child : node->children) {
+                evaluateNode(child);
+            }
+            return Value();
         case NodeType::Assignment:
             return evaluateAssignment(node);
         case NodeType::ArithmeticExpression:
