@@ -25,6 +25,13 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    size_t dotPos = arg.find_last_of('.');
+    if (dotPos == std::string::npos || 
+        (arg.substr(dotPos) != ".sgnm" && arg.substr(dotPos) != ".sg")) {
+        std::cerr << "Error: Invalid file extension. Expected .sgnm or .sg file" << std::endl;
+        return 1;
+    }
+
     // ファイルが指定されている場合
     std::ifstream file(arg);
     if (!file) {
