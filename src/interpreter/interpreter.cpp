@@ -393,6 +393,37 @@ Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
     throw std::runtime_error("Invalid cast: " + node->toJSON());
 }
 
+// if文ノード評価
+Value Interpreter::evaluateIfStatement(const std::shared_ptr<ASTNode>& node) {
+    Value condition = evaluateNode(node->children[0]);
+    if (std::holds_alternative<bool>(condition) && std::get<bool>(condition)) {
+        return evaluateNode(node->children[1]);
+    }
+    return Value();
+}
+
+// ループ文ノード評価
+Value Interpreter::evaluateLoopStatement(const std::shared_ptr<ASTNode>& node) {
+    while (true) {
+        Value condition = evaluateNode(node->children[0]);
+        if (std::holds_alternative<bool>(condition) && !std::get<bool>(condition)) {
+            break;
+        }
+        evaluateNode(node->children[1]);
+    }
+    return Value();
+}
+
+// 入力文ノード評価
+Value Interpreter::evaluateInputStatement(const std::shared_ptr<ASTNode>& node) {
+    std::string varName = node->children[0]->value;
+    std::string input;
+    std::cout << "Input " << varName << ": ";
+    std::cin >> input;
+    setMemoryValue(varName[0], evaluateMemoryIndex(varName), input);
+    return Value();
+}
+
 // メモリ参照ノード評価
 Value Interpreter::evaluateMemoryRef(const std::shared_ptr<ASTNode>& node) {
     return resolveMemoryRef(node->value);
