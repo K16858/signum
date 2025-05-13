@@ -2,6 +2,7 @@
 
 # include "interpreter.hpp"
 
+
 // メモリ参照を解決する
 Value Interpreter::resolveMemoryRef(const std::string& ref) {
     if (ref[0] == '#') {
@@ -32,11 +33,28 @@ int Interpreter::evaluateMemoryIndex(const std::string& indexExpr) {
 
 // メモリ値の取得
 Value Interpreter::getMemoryValue(char type, int index) {
+    if (index < 0 || index >= MEMORY_POOL_SIZE) {
+        throw std::out_of_range("Memory index out of range: " + std::to_string(index));
+    }
     switch (type) {
         case '#': return intPool[index];
         case '@': return stringPool[index];
         case '~': return floatPool[index];
         case '%': return boolPool[index];
+        default: throw std::runtime_error("Invalid memory type: " + std::string(1, type));
+    }
+}
+
+// メモリ値の設定
+void Interpreter::setMemoryValue(char type, int index, const Value& value) {
+    if (index < 0 || index >= MEMORY_POOL_SIZE) {
+        throw std::out_of_range("Memory index out of range: " + std::to_string(index));
+    }
+    switch (type) {
+        case '#': intPool[index] = std::get<int>(value); break;
+        case '@': stringPool[index] = std::get<std::string>(value); break;
+        case '~': floatPool[index] = std::get<double>(value); break;
+        case '%': boolPool[index] = std::get<bool>(value); break;
         default: throw std::runtime_error("Invalid memory type: " + std::string(1, type));
     }
 }
@@ -439,6 +457,35 @@ Value Interpreter::evaluateInputStatement(const std::shared_ptr<ASTNode>& node) 
 Value Interpreter::evaluateOutputStatement(const std::shared_ptr<ASTNode>& node) {
     Value value = evaluateNode(node->children[0]);
     std::cout << valueToString(value) << std::endl;
+    return Value();
+}
+
+// ファイル入力文ノード評価
+Value Interpreter::evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node) {
+    std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
+    std::string varName = node->children[1]->value;
+
+    std::ifstream file(filename);
+    if (!file) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    
+    setMemoryValue(varName[0], evaluateMemoryIndex(varName), content);
+    return Value();
+}
+
+// ファイル出力文ノード評価
+Value Interpreter::evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node) {
+    std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
+    Value value = evaluateNode(node->children[1]);
+
+    std::ofstream file(filename);
+    if (!file) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+    
+    file << valueToString(value);
     return Value();
 }
 
