@@ -211,6 +211,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
                 if (rval == 0) throw std::runtime_error("Division by zero");
                 return lval / rval;
             }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
+            }
         } 
         // double-double
         else if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
@@ -251,6 +255,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
                 if (rval) return lval / 1;
                 throw std::runtime_error("Division by zero");
             }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
+            }
         }
         // double-bool
         else if (std::holds_alternative<double>(left) && std::holds_alternative<bool>(right)) {
@@ -277,6 +285,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
                 if (rval == 0) throw std::runtime_error("Division by zero");
                 return (lval ? 1 : 0) / rval;
             }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
+            }
         }
         // bool-double
         else if (std::holds_alternative<bool>(left) && std::holds_alternative<double>(right)) {
@@ -296,8 +308,17 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
             bool lval = std::get<bool>(left);
             bool rval = std::get<bool>(right);
             
-            if (op == "&&") return lval && rval;
-            if (op == "||") return lval || rval;
+            if (op == "+") return (lval ? 1 : 0) + (rval ? 1 : 0);
+            if (op == "-") return (lval ? 1 : 0) - (rval ? 1 : 0);
+            if (op == "*") return (lval ? 1 : 0) * (rval ? 1 : 0);
+            if (op == "/") {
+                if (!rval) throw std::runtime_error("Division by zero");
+                return (lval ? 1 : 0) / (rval ? 1 : 0);
+            }
+            if (op == "%") {
+                if (!rval) throw std::runtime_error("Modulo by zero");
+                return (lval ? 1 : 0) % (rval ? 1 : 0);
+            }
         }
         // str-任意の型
         else if ((std::holds_alternative<std::string>(left) || 
