@@ -212,10 +212,14 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
         }
     }
 
-    if ((op == "+" || op == "-" || op == "*" || op == "/") &&
+    if ((op == "+" || op == "-" || op == "*" || op == "/" || op == "%") &&
              (leftType == MemoryType::Integer || leftType == MemoryType::Float) &&
              (rightType == MemoryType::Integer || rightType == MemoryType::Float)) {
         // 数値演算はOK
+        if (op == "%" && (leftType == MemoryType::Float || rightType == MemoryType::Float)) {
+            reportError("Modulo operator requires integer operands");
+            return MemoryType::Integer;
+        }
         return (leftType == MemoryType::Float || rightType == MemoryType::Float) ?
                MemoryType::Float : MemoryType::Integer;
     }
