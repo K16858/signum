@@ -83,5 +83,8 @@ private:
     
     // 型の互換性チェック
     bool isCompatible(MemoryType lhs, MemoryType rhs);
+    
+    // 関数定義を集める（1パス目）
+    void collectFunctionDefinitions(const ASTNode* node);
 };
 

@@ -15,11 +15,40 @@ std::string memoryTypeToString(MemoryType type) {
 // メインの解析関数
 bool SemanticAnalyzer::analyze(const std::shared_ptr<ASTNode>& root) {
     if (!root) return false;
-    
+    // 1パス目：関数定義を収集
+    collectFunctionDefinitions(root.get());
+
+    // 2パス目：ノードを巡回して意味解析を行う
     visitNode(root.get());
     return errors.empty();
 }
 
+// 関数定義収集
+void SemanticAnalyzer::collectFunctionDefinitions(const ASTNode* node) {
+    if (!node) return;
+    
+    // 関数定義を見つけたら登録
+    if (node->type == NodeType::Function) {
+        std::string funcID = node->value;
+        bool idError = false;
+        
+        try {
+            int funcIDInt = std::stoi(funcID);
+            if (funcIDInt < 1 || funcIDInt > 999) {
+                idError = true;
+            }
+        } catch (...) {
+            idError = true;
+        }
+        
+        // 関数を登録
+        functions[funcID] = {funcID, !idError};
+    }
+
+    for (const auto& child : node->children) {
+        collectFunctionDefinitions(child.get());
+    }
+}
 // ノード巡回関数
 MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
     if (!node) return MemoryType::Integer; // デフォルト値
@@ -212,10 +241,14 @@ MemoryType SemanticAnalyzer::checkExpression(const ASTNode* node) {
         }
     }
 
-    if ((op == "+" || op == "-" || op == "*" || op == "/") &&
+    if ((op == "+" || op == "-" || op == "*" || op == "/" || op == "%") &&
              (leftType == MemoryType::Integer || leftType == MemoryType::Float) &&
              (rightType == MemoryType::Integer || rightType == MemoryType::Float)) {
         // 数値演算はOK
+        if (op == "%" && (leftType == MemoryType::Float || rightType == MemoryType::Float)) {
+            reportError("Modulo operator requires integer operands");
+            return MemoryType::Integer;
+        }
         return (leftType == MemoryType::Float || rightType == MemoryType::Float) ?
                MemoryType::Float : MemoryType::Integer;
     }
@@ -279,28 +312,31 @@ MemoryType SemanticAnalyzer::checkCast(const ASTNode* node) {
 void SemanticAnalyzer::checkFunctionDefinition(const ASTNode* node) {
     if (node->value.empty()) {
         reportError("Function ID is empty");
+        return;
     }
 
-    int funcIDInt = 0;
+    std::string funcID = node->value;
     bool idError = false;
-    // 関数IDの形式(001-099)をチェック
+    
+    // 数字のみで構成されているかチェック
     try {
-        int funcIDInt = std::stoi(node->value);
-        if (funcIDInt < 1 || funcIDInt > 99) {
-            reportError("Function ID: " + node->value + " is not in range 001-099");
+        int funcIDInt = std::stoi(funcID);
+        if (funcIDInt < 1 || funcIDInt > 999) {
+            reportError("Function ID: " + funcID + " is not in range 001-999");
             idError = true;
         }
     } 
     catch (const std::exception& e) {
-        reportError("Function ID is not number: " + node->value);
+        reportError("Invalid function ID number: " + funcID);
         idError = true;
     }
-    
-    std::string funcID = node->value;
-    
-    // すでに定義済みの関数か確認
-    if (functions.count(funcID) > 0 && functions[funcID].isDefined) {
-        reportError("Function " + funcID + " is already defined");
+
+    if (functions.count(funcID) > 0) {
+        // 関数内のステートメントだけチェック
+        for (const auto& child : node->children) {
+            visitNode(child.get());
+        }
+        return;
     }
     
     // 関数を登録

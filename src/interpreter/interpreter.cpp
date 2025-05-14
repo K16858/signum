@@ -119,6 +119,11 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateFunction(node);
         case NodeType::FunctionCall:
             return evaluateFunctionCall(node);
+        case NodeType::Statement:
+            for (const auto& child : node->children) {
+                evaluateNode(child);
+            }
+            return Value();
         case NodeType::Assignment:
             return evaluateAssignment(node);
         case NodeType::ArithmeticExpression:
@@ -171,7 +176,11 @@ Value Interpreter::evaluateFunctionCall(const std::shared_ptr<ASTNode>& node) {
     // 関数の呼び出しを評価
     auto it = functions.find(std::stoi(node->value));
     if (it != functions.end()) {
-        return evaluateNode(it->second);
+        // 関数の中身（子ノード）を順番に実行
+        for (const auto& child : it->second->children) {
+            evaluateNode(child);
+        }
+        return Value();
     }
     throw std::runtime_error("Function not found: " + node->value);
 }
@@ -210,6 +219,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
             if (op == "/") {
                 if (rval == 0) throw std::runtime_error("Division by zero");
                 return lval / rval;
+            }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
             }
         } 
         // double-double
@@ -251,6 +264,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
                 if (rval) return lval / 1;
                 throw std::runtime_error("Division by zero");
             }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
+            }
         }
         // double-bool
         else if (std::holds_alternative<double>(left) && std::holds_alternative<bool>(right)) {
@@ -277,6 +294,10 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
                 if (rval == 0) throw std::runtime_error("Division by zero");
                 return (lval ? 1 : 0) / rval;
             }
+            if (op == "%") {
+                if (rval == 0) throw std::runtime_error("Modulo by zero");
+                return lval % rval;
+            }
         }
         // bool-double
         else if (std::holds_alternative<bool>(left) && std::holds_alternative<double>(right)) {
@@ -296,8 +317,17 @@ Value Interpreter::evaluateArithmeticExpression(const std::shared_ptr<ASTNode>& 
             bool lval = std::get<bool>(left);
             bool rval = std::get<bool>(right);
             
-            if (op == "&&") return lval && rval;
-            if (op == "||") return lval || rval;
+            if (op == "+") return (lval ? 1 : 0) + (rval ? 1 : 0);
+            if (op == "-") return (lval ? 1 : 0) - (rval ? 1 : 0);
+            if (op == "*") return (lval ? 1 : 0) * (rval ? 1 : 0);
+            if (op == "/") {
+                if (!rval) throw std::runtime_error("Division by zero");
+                return (lval ? 1 : 0) / (rval ? 1 : 0);
+            }
+            if (op == "%") {
+                if (!rval) throw std::runtime_error("Modulo by zero");
+                return (lval ? 1 : 0) % (rval ? 1 : 0);
+            }
         }
         // str-任意の型
         else if ((std::holds_alternative<std::string>(left) || 
@@ -458,8 +488,25 @@ Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
 Value Interpreter::evaluateIfStatement(const std::shared_ptr<ASTNode>& node) {
     Value condition = evaluateNode(node->children[0]);
     if (std::holds_alternative<bool>(condition) && std::get<bool>(condition)) {
+        // ifが成立したら、if本体を実行して終了
         return evaluateNode(node->children[1]);
+    } 
+    else if (node->children.size() > 2) {
+        // else ifがあるか（2つ置きにノードが条件と本体になってる）
+        for (size_t i = 2; i < node->children.size(); i += 2) {
+            // 最後の1つはelseブロック
+            if (i == node->children.size() - 1) {
+                return evaluateNode(node->children[i]);
+            }
+            
+            // それ以外はelse if条件を評価
+            condition = evaluateNode(node->children[i]);
+            if (std::holds_alternative<bool>(condition) && std::get<bool>(condition)) {
+                return evaluateNode(node->children[i+1]);
+            }
+        }
     }
+
     return Value();
 }
 

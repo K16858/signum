@@ -1,7 +1,6 @@
 #include "repl.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
-#include "semantic/semantic.hpp"
 #include <iostream>
 #include <string>
 
@@ -20,7 +19,7 @@ void REPL::start() {
 
         std::string line;
         while (std::getline(std::cin, line)) {
-            if (!multilineInput && inputBuffer.empty()) {
+            if (inputBuffer.empty()) {
                 if (line == ".exit" || line == ".quit") {
                     running = false;
                     std::cout << "Exiting REPL..." << std::endl;
@@ -40,20 +39,18 @@ void REPL::start() {
 
             for (char c : line) {
                 if (c == '{') {
-                    if (c == '{') {
-                        bracketCount++;
-                        multilineInput = true;
-                    }
-                    if (c == '}') {
-                        bracketCount--;
-                    }
+                    bracketCount++;
+                    multilineInput = true;
+                }
+                else if (c == '}') {
+                    bracketCount--;
                 }
             }
 
             bool hasTerminator = !line.empty() && line.back() == ';';
 
             if ((multilineInput && bracketCount > 0) ||
-                (!multilineInput && !hasTerminator && line.empty())) {
+                (!multilineInput && !hasTerminator && !line.empty())) {
                 // コードが続く場合
                 std::cout << ">>> ";
             } 
@@ -101,7 +98,6 @@ void REPL::executeCode(const std::string& code) {
         auto ast = parser.parseProgram();
 
         if (ast) {
-            SemanticAnalyzer analyzer;
             if (analyzer.analyze(ast)) {
                 interpreter.interpret(ast);
             }
