@@ -180,7 +180,7 @@ bool SemanticAnalyzer::checkMemoryRange(const std::string& memRef) {
     
     try {
         int index = std::stoi(memRef.substr(digitStart));
-        return index >= 0 && index < 128; // 0～127の範囲内かチェック
+        return index >= 0 && index < 64; // 0～63の範囲内かチェック
     } 
     catch (...) {
         return false; // 数値変換エラー
