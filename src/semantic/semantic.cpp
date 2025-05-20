@@ -114,6 +114,14 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
                 visitNode(child.get());
             }
             return MemoryType::Integer;
+
+        case NodeType::FileInputStatement:
+            checkFileInputOutput(node);
+            return MemoryType::Integer;
+        
+        case NodeType::FileOutputStatement:
+            checkFileInputOutput(node);
+            return MemoryType::Integer;
             
         default:
             // その他のノード
@@ -356,6 +364,25 @@ void SemanticAnalyzer::checkFunctionCall(const ASTNode* node) {
     if (functions.count(funcID) == 0 || !functions[funcID].isDefined) {
         reportError("Function " + funcID + " is not defined");
     }
+}
+
+// ファイル入出力のチェック
+void SemanticAnalyzer::checkFileInputOutput(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("File I/O statement has too few children");
+        return;
+    }
+    
+    // ファイル名の取得
+    auto fileNameNode = node->children[0].get();
+    if (fileNameNode->type != NodeType::String && fileNameNode->type != NodeType::MemoryRef) {
+        reportError("Invalid file name type: " + fileNameNode->value);
+        return;
+    }
+    
+    // 出力する式のチェック
+    auto outputExprNode = node->children[1].get();
+    visitNode(outputExprNode);
 }
 
 // エラー報告
