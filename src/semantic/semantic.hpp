@@ -71,6 +71,9 @@ private:
     
     // 条件式のチェック
     bool checkCondition(const ASTNode* node);
+
+    // ファイル入出力のチェック
+    void checkFileInputOutput(const ASTNode* node);
     
     // エラー報告
     void reportError(const std::string& message);

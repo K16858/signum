@@ -15,10 +15,10 @@
 using Value = std::variant<int, double, std::string, bool>;
 
 // メモリプールのサイズ
-constexpr size_t MEMORY_POOL_SIZE = 128;
-constexpr size_t ARGS_START = 100;
-constexpr size_t RETURN_START = 116;
-constexpr size_t SYSTEM_START = 124;
+constexpr size_t MEMORY_POOL_SIZE = 64;
+constexpr size_t ARGS_START = 48;
+constexpr size_t RETURN_START = 56;
+constexpr size_t SYSTEM_START = 60;
 
 class Interpreter {
 private:

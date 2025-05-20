@@ -5,7 +5,7 @@
 #include <string>
 
 void REPL::start() {
-    std::cout << "Welcome to the SigNum 1.0.0 alpha REPL!" << std::endl;
+    std::cout << "Welcome to the SigNum 0.1.0 alpha REPL!" << std::endl;
     std::cout << "Type '.help' for a list of commands." << std::endl;
 
     running = true;
