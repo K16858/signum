@@ -550,7 +550,8 @@ Value Interpreter::evaluateFileInputStatement(const std::shared_ptr<ASTNode>& no
     }
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     
-    setMemoryValue(varName[0], evaluateMemoryIndex(varName), content);
+    int startPos = (varName[0] == '$') ? 1 : 0;
+    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), content);
     return Value();
 }
 
