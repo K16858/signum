@@ -574,11 +574,12 @@ Value Interpreter::evaluateMemoryRef(const std::shared_ptr<ASTNode>& node) {
     return resolveMemoryRef(node->value);
 }
 
+// 数値ノード評価
 Value Interpreter::evaluateNumber(const std::shared_ptr<ASTNode>& node) {
     return std::stoi(node->value);
 }
 
+// 文字列ノード評価
 Value Interpreter::evaluateString(const std::shared_ptr<ASTNode>& node) {
     return node->value;
 }
-
