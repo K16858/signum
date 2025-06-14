@@ -373,8 +373,8 @@ std::vector<Token> tokenize(const std::string& src) {
 
 void printTokens(const std::vector<Token>& tokens) {
     for (const auto& token : tokens) {
-        std::cout << "トークン: " << tokenType2String(token.type)
-                  << ", 値: " << token.value 
-                  << ", 行: " << token.line << std::endl;
+        std::cout << "Token: " << tokenType2String(token.type)
+                  << ", Value: " << token.value 
+                  << ", Line: " << token.line << std::endl;
     }
 }

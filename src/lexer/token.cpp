@@ -5,14 +5,14 @@
 // トークン型を文字列に変換する関数
 std::string tokenType2String(TokenType type) {
     switch (type) {
-        case TokenType::Symbol: return "シンボル";
-        case TokenType::Integer: return "整数値";
-        case TokenType::Float: return "浮動小数点値";
-        case TokenType::Boolean: return "ブール値";
-        case TokenType::MemoryRef: return "メモリ参照";
-        case TokenType::Function: return "関数宣言";
-        case TokenType::FunctionCall: return "関数呼び出し";
-        case TokenType::String: return "文字列";
+        case TokenType::Symbol: return "Symbol";            // シンボル
+        case TokenType::Integer: return "Integer";          // 整数値
+        case TokenType::Float: return "Float";              // 浮動小数点数
+        case TokenType::Boolean: return "Boolean";          // ブール値
+        case TokenType::MemoryRef: return "MemoryRef";      // メモリ参照
+        case TokenType::Function: return "Function";        // 関数
+        case TokenType::FunctionCall: return "FunctionCall";// 関数呼び出し
+        case TokenType::String: return "String";            // 文字列
         case TokenType::LBrace: return "{";                 // 左中括弧
         case TokenType::RBrace: return "}";                 // 右中括弧
         case TokenType::LParen: return "(";                 // 左括弧
@@ -49,15 +49,15 @@ std::string tokenType2String(TokenType type) {
         case TokenType::GreaterThanOrEqual: return ">=";    // 以上
         case TokenType::EqualTo: return "==";               // 等価
         case TokenType::NotEqualTo: return "!=";            // 非等価
-        case TokenType::IntCast: return "整数キャスト";
-        case TokenType::FloatCast: return "浮動小数点キャスト";
-        case TokenType::StrCast: return "文字列キャスト";
-        case TokenType::BoolCast: return "ブールキャスト";
+        case TokenType::IntCast: return "IntCast";          // 整数キャスト
+        case TokenType::FloatCast: return "FloatCast";      // 浮動小数点キャスト
+        case TokenType::StrCast: return "StrCast";          // 文字列キャスト
+        case TokenType::BoolCast: return "BoolCast";        // ブールキャスト
         case TokenType::Hash: return "#";                   // ハッシュ
         case TokenType::At: return "@";                     // アットマーク
         case TokenType::Dollar: return "$";                 // ドル
         case TokenType::Tilde: return "~";                  // チルダ
         case TokenType::End: return "END";                  // 終端トークン
-        default: return "不明";                             // 不明なトークン
+        default: return "Unknown";                             // 不明なトークン
     }
 }

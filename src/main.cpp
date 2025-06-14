@@ -48,6 +48,20 @@ int main(int argc, char* argv[]) {
         if (argc > 2) {
             filename = argv[2];
         }
+        else {
+            std::cerr << "Error: No file specified for debug mode." << std::endl;
+            return 1;
+        }
+    }
+    else {
+        // ファイル名を取得
+        filename = arg;
+    }
+
+    if (filename.empty()) {
+        std::cerr << "Error: No input file specified" << std::endl;
+        showhelp();
+        return 1;
     }
 
     size_t dotPos = filename.find_last_of('.');
@@ -79,7 +93,7 @@ int main(int argc, char* argv[]) {
             if (config.debugMode) {
                 std::cout << "\n=== AST ===" << std::endl;
                 ast->print();
-                std::cout << "\n=== JSONOutput ===" << std::endl;
+                std::cout << "\n=== JSON Output ===" << std::endl;
                 if (ast->saveToJSONFile("ast_output.json")) {
                     std::cout << "Save : ast_output.json" << std::endl << std::endl;
                 }
