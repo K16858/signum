@@ -5,7 +5,7 @@
 #include <string>
 
 void REPL::start() {
-    std::cout << "Welcome to the SigNum 0.1.0 alpha REPL!" << std::endl;
+    std::cout << "Welcome to the SigNum 0.2.0 alpha REPL!" << std::endl;
     std::cout << "Type '.help' for a list of commands." << std::endl;
 
     running = true;
@@ -92,7 +92,8 @@ void REPL::printHelp() {
 
 void REPL::executeCode(const std::string& code) {
     try {
-        auto tokens = tokenize(code);
+        Lexer lexer(code);
+        auto tokens = lexer.tokenize();
 
         Parser parser(tokens);
         auto ast = parser.parseProgram();

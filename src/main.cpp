@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     }
     // バージョン情報を表示
     else if (arg == "-v" || arg == "--version") {
-        std::cout << "SigNum Interpreter Version 0.1.0 alpha" << std::endl;
+        std::cout << "SigNum Interpreter Version 0.2.0 alpha" << std::endl;
         return 0;
     }
     // デバッグモードを有効にする
@@ -81,7 +81,8 @@ int main(int argc, char* argv[]) {
     try {
         std::string code((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-        auto tokens = tokenize(code);
+        Lexer lexer(code);
+        auto tokens = lexer.tokenize();
         if (config.debugMode) {
             std::cout << "=== Tokens ===" << std::endl;
             printTokens(tokens);
