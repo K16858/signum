@@ -83,6 +83,11 @@ int main(int argc, char* argv[]) {
 
         Lexer lexer(code);
         auto tokens = lexer.tokenize();
+        if (lexer.hasErrors()) {
+            std::cerr << "Lexical Analysis Failed!" << std::endl;
+            lexer.printErrors();
+            return 1;
+        }
         if (config.debugMode) {
             std::cout << "=== Tokens ===" << std::endl;
             printTokens(tokens);

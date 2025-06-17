@@ -5,6 +5,21 @@
 #include <string>
 #include <vector>
 
+// エラー箇所の周辺コンテキストを取得
+std::string Lexer::getContextAroundPosition() const {
+    const size_t contextRange = 20; // 前後20文字
+    size_t start = (pos > contextRange) ? pos - contextRange : 0;
+    size_t end = (pos + contextRange < source.size()) ? pos + contextRange : source.size();
+    
+    std::string context = source.substr(start, end - start);
+    // 改行を表示用に変換
+    for (char& c : context) {
+        if (c == '\n') c = ' ';
+        if (c == '\t') c = ' ';
+    }
+    return context;
+}
+
 // メモリ参照を解析
 std::string Lexer::parseMemoryRef() {
     std::string memref = "";
@@ -65,8 +80,8 @@ std::vector<Token> Lexer::tokenize() {
                 ++column;
             } 
             else {
-                std::cerr << "Error: Unmatched double quote\n";
-                return {};
+                addError("Unmatched double quote", getContextAroundPosition());
+                return tokens;
             }
             continue;
         }
@@ -130,8 +145,8 @@ std::vector<Token> Lexer::tokenize() {
                     }
                 } 
                 else {
-                    std::cerr << "Error";
-                    return {};
+                    addError("Invalid float format: decimal point must be followed by digits", getContextAroundPosition());
+                    return tokens;
                 }
             }
             
@@ -387,8 +402,8 @@ std::vector<Token> Lexer::tokenize() {
                     column += 2;
                 } 
                 else {
-                    std::cerr << "Error: Unknown character sequence '|" << source[pos + 1] << "'\n";
-                    return {};
+                    addError("Unknown character sequence '|" + std::string(1, source[pos + 1]) + "'", getContextAroundPosition());
+                    return tokens;
                 }
                 break;
             case '!':
@@ -415,8 +430,8 @@ std::vector<Token> Lexer::tokenize() {
                     tokens.push_back({TokenType::Symbol, symbol, line});
                 } 
                 else {
-                    std::cerr << "Error: Unknown character '" << c << "'\n";
-                    return {};
+                    addError("Unknown character '" + std::string(1, c) + "'", getContextAroundPosition());
+                    return tokens;
                 }
                 break;
         }
@@ -427,10 +442,11 @@ std::vector<Token> Lexer::tokenize() {
     return tokens;
 }
 
-void Lexer::reset() {
-    pos = 0;
-    line = 1;
-    column = 1;
+// エラー情報を出力
+void Lexer::printErrors() const {
+    for (const auto& error : errors) {
+        std::cerr << error.toString() << std::endl;
+    }
 }
 
 void printTokens(const std::vector<Token>& tokens) {

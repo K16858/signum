@@ -95,6 +95,11 @@ void REPL::executeCode(const std::string& code) {
         Lexer lexer(code);
         auto tokens = lexer.tokenize();
 
+        if (lexer.hasErrors()) {
+            std::cerr << "Lexical Analysis Failed!" << std::endl;
+            lexer.printErrors();
+        }
+
         Parser parser(tokens);
         auto ast = parser.parseProgram();
 
