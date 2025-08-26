@@ -115,7 +115,10 @@ int main(int argc, char* argv[]) {
             }
         } 
         else {
-            std::cerr << "Parsing failed!" << std::endl;
+            std::cerr << "Parsing Failed!" << std::endl;
+            if (parser.hasErrors()) {
+                parser.printErrors();
+            }
             return 1;
         }
     } 

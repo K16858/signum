@@ -112,7 +112,10 @@ void REPL::executeCode(const std::string& code) {
             }
         }
         else {
-            std::cout << "Parsing failed!" << std::endl;
+            std::cerr << "Parsing Failed!" << std::endl;
+            if (parser.hasErrors()) {
+                parser.printErrors();
+            }
         }
     }
     catch (const std::exception& e) {

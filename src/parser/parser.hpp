@@ -16,6 +16,7 @@ private:
     size_t pos = 0;             // 解析位置
     bool hasError = false;      // エラーフラグ
     bool debugMode = false;    // デバッグモード
+    std::vector<std::string> errors; // エラーリスト
 
 public:
     Parser(const std::vector<Token>& tokens, bool debug = false) 
@@ -75,11 +76,25 @@ public:
     // 型変換の解析
     std::shared_ptr<ASTNode> parseCast();
 
+    // エラー関連
+    bool hasErrors() const { return !errors.empty(); }
+    void printErrors() const {
+        for (const auto& error : errors) {
+            std::cerr << error << std::endl;
+        }
+    }
+
 private:
     Token& getToken() { return tokens[pos]; }       // 現在のトークンを取得
     void advance() { pos++; }                       // 次のトークンに進む
     void reportError(const std::string& message) {  // エラーレポート
-        std::cerr << "Error: " << message << " at token " << pos << std::endl;
+        if (pos < tokens.size()) {
+            std::string errorMsg = "Parse Error at line " + std::to_string(tokens[pos].line) + 
+                                 ": " + message + " (token: '" + tokens[pos].value + "')";
+            errors.push_back(errorMsg);
+        } else {
+            errors.push_back("Parse Error: " + message + " (at end of input)");
+        }
         hasError = true;
     }
     std::shared_ptr<ASTNode> recoverFromError(const std::string& message); // エラーから回復
