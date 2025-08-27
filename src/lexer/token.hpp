@@ -59,6 +59,8 @@ enum class TokenType {
     Dollar,
     Tilde,
     End,
+    Push,
+    Pop
 };
 
 // トークン構造体

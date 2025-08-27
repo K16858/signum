@@ -58,6 +58,8 @@ std::string tokenType2String(TokenType type) {
         case TokenType::Dollar: return "$";                 // ドル
         case TokenType::Tilde: return "~";                  // チルダ
         case TokenType::End: return "END";                  // 終端トークン
-        default: return "Unknown";                             // 不明なトークン
+        case TokenType::Push: return "|>";                  // スタックプッシュ
+        case TokenType::Pop: return "<|";                   // スタックポップ
+        default: return "Unknown";                          // 不明なトークン
     }
 }
