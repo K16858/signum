@@ -255,9 +255,25 @@ std::vector<Token> Lexer::tokenize() {
                     column += 2;
                 }
                 else if (pos + 1 < source.size() && source[pos + 1] == '|') {
-                    tokens.push_back({TokenType::Pop, "<|", line});
-                    pos += 2;
-                    column += 2;
+                    switch (source[pos + 2]) {
+                        case '#':
+                            tokens.push_back({TokenType::IntegerStackPop, "<|#", line});
+                            break;
+                        case '~':
+                           tokens.push_back({TokenType::FloatStackPop, "<|~", line});
+                           break;
+                        case '@':
+                           tokens.push_back({TokenType::StringStackPop, "<|@", line});
+                           break;
+                        case '%':
+                           tokens.push_back({TokenType::BooleanStackPop, "<|%", line});
+                           break;
+                        default:
+                                addError("Unknown stack pop type '<|" + std::string(1, source[pos + 2]) + "'", getContextAroundPosition());
+                                return tokens;
+                    }
+                    pos += 3;
+                    column += 3;
                 }
                 else {
                     tokens.push_back({TokenType::LAngleBracket, "<", line});
@@ -410,9 +426,25 @@ std::vector<Token> Lexer::tokenize() {
                     column += 2;
                 } 
                 else if (pos + 1 < source.size() && source[pos + 1] == '>') {
-                    tokens.push_back({TokenType::Push, "|>", line});
-                    pos += 2;
-                    column += 2;
+                    switch (source[pos + 2]) {
+                        case '#':
+                            tokens.push_back({TokenType::IntegerStackPush, "|>#", line});
+                            break;
+                        case '~':
+                           tokens.push_back({TokenType::FloatStackPush, "|>~", line});
+                           break;
+                        case '@':
+                           tokens.push_back({TokenType::StringStackPush, "|>@", line});
+                           break;
+                        case '%':
+                           tokens.push_back({TokenType::BooleanStackPush, "|>%", line});
+                           break;
+                        default:
+                            addError("Unknown stack push type '|>" + std::string(1, source[pos + 2]) + "'", getContextAroundPosition());
+                            return tokens;
+                    }
+                    pos += 3;
+                    column += 3;
                 }                 
                 else {
                     addError("Unknown character sequence '|" + std::string(1, source[pos + 1]) + "'", getContextAroundPosition());
