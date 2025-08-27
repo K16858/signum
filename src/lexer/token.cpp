@@ -58,8 +58,15 @@ std::string tokenType2String(TokenType type) {
         case TokenType::Dollar: return "$";                 // ドル
         case TokenType::Tilde: return "~";                  // チルダ
         case TokenType::End: return "END";                  // 終端トークン
-        case TokenType::Push: return "|>";                  // スタックプッシュ
-        case TokenType::Pop: return "<|";                   // スタックポップ
+        case TokenType::IntegerStackPush: return "|>#";     // 整数スタックプッシュ
+        case TokenType::IntegerStackPop: return "<|#";      // 整数スタックポップ
+        case TokenType::FloatStackPush: return "|>~";       // 浮動小数点スタックプッシュ
+        case TokenType::FloatStackPop: return "<|~";        // 浮動小数点スタックポップ
+        case TokenType::StringStackPush: return "|>@";      // 文字列スタックプッシュ
+        case TokenType::StringStackPop: return "<|@";       // 文字列スタックポップ
+        case TokenType::BooleanStackPush: return "|>%";     // ブールスタックプッシュ
+        case TokenType::BooleanStackPop: return "<|%";      // ブールスタックポップ
+
         default: return "Unknown";                          // 不明なトークン
     }
 }
