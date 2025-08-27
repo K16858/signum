@@ -347,7 +347,8 @@ std::vector<Token> Lexer::tokenize() {
                     tokens.push_back({TokenType::IntCast, "#:", line});
                     pos += 2;
                     column += 2;
-                } else {
+                }
+                else {
                     tokens.push_back({TokenType::Hash, "#", line});
                     ++pos;
                     ++column;
@@ -358,7 +359,8 @@ std::vector<Token> Lexer::tokenize() {
                     tokens.push_back({TokenType::StrCast, "@:", line});
                     pos += 2;
                     column += 2;
-                } else {
+                }
+                else {
                     tokens.push_back({TokenType::At, "@", line});
                     ++pos;
                     ++column;
@@ -369,7 +371,8 @@ std::vector<Token> Lexer::tokenize() {
                     tokens.push_back({TokenType::FloatCast, "~:", line});
                     pos += 2;
                     column += 2;
-                } else {
+                }
+                else {
                     tokens.push_back({TokenType::Tilde, "~", line});
                     ++pos;
                     ++column;
@@ -406,6 +409,11 @@ std::vector<Token> Lexer::tokenize() {
                     pos += 2;
                     column += 2;
                 } 
+                else if (pos + 1 < source.size() && source[pos + 1] == '>') {
+                    tokens.push_back({TokenType::Push, "|>", line});
+                    pos += 2;
+                    column += 2;
+                }                 
                 else {
                     addError("Unknown character sequence '|" + std::string(1, source[pos + 1]) + "'", getContextAroundPosition());
                     return tokens;
