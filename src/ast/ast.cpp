@@ -27,6 +27,7 @@ std::string nodeType2String(NodeType type) {
         case NodeType::OutputStatement: return "OutputStatement";
         case NodeType::FileInputStatement: return "FileInputStatement";
         case NodeType::FileOutputStatement: return "FileOutputStatement";
+        case NodeType::StackOperation: return "StackOperation";
         case NodeType::Error: return "Error";
         default: return "Unknown";
     }
