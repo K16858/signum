@@ -76,6 +76,9 @@ public:
     // 型変換の解析
     std::shared_ptr<ASTNode> parseCast();
 
+    // スタック操作の解析
+    std::shared_ptr<ASTNode> parseStackOperation();
+
     // エラー関連
     bool hasErrors() const { return !errors.empty(); }
     void printErrors() const {
