@@ -828,6 +828,36 @@ std::shared_ptr<ASTNode> Parser::parseCast() {
     return node;
 }
 
+std::shared_ptr<ASTNode> Parser::parseStackOperation() {
+    debugLog("スタック操作を解析中...");
+
+    std::string operation;
+    if (tokens[pos].type == TokenType::IntegerStackPush) operation = "IntegerStackPush";
+    else if (tokens[pos].type == TokenType::IntegerStackPop) operation = "IntegerStackPop";
+    else if (tokens[pos].type == TokenType::FloatStackPush) operation = "FloatStackPush";
+    else if (tokens[pos].type == TokenType::FloatStackPop) operation = "FloatStackPop";
+    else if (tokens[pos].type == TokenType::StringStackPush) operation = "StringStackPush";
+    else if (tokens[pos].type == TokenType::StringStackPop) operation = "StringStackPop";
+    else if (tokens[pos].type == TokenType::BooleanStackPush) operation = "BooleanStackPush";
+    else if (tokens[pos].type == TokenType::BooleanStackPop) operation = "BooleanStackPop";
+    else {
+        return recoverFromError("Expected stack operation");
+    }
+
+    advance(); // スタック操作トークンをスキップ
+
+    auto node = std::make_shared<ASTNode>(NodeType::StackOperation, operation);
+    node->children.push_back(parseExpression());
+
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        return recoverFromError("Expected ';' after stack operation");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
 std::shared_ptr<ASTNode> Parser::recoverFromError(const std::string& message) {
     reportError(message);
     synchronize(); // 次のポイントまでスキップ
