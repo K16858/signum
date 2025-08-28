@@ -122,7 +122,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
         case NodeType::FileOutputStatement:
             checkFileInputOutput(node);
             return MemoryType::Integer;
-            
+
+        case NodeType::StackOperation:
+            return checkStackOperation(node);
+
         default:
             // その他のノード
             for (const auto& child : node->children) {
@@ -383,6 +386,47 @@ void SemanticAnalyzer::checkFileInputOutput(const ASTNode* node) {
     // 出力する式のチェック
     auto outputExprNode = node->children[1].get();
     visitNode(outputExprNode);
+}
+
+// スタック操作のチェック
+MemoryType SemanticAnalyzer::checkStackOperation(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("Stack operation missing operand");
+        return MemoryType::Integer;
+    }
+
+    // 操作種別
+    std::string op = node->value;
+    auto operandType = visitNode(node->children[0].get());
+
+    // 操作ごとに型チェック
+    if (op == "IntegerStackPush" || op == "IntegerStackPop") {
+        if (operandType != MemoryType::Integer) {
+            reportError("Stack operation expects integer type");
+        }
+        return MemoryType::Integer;
+    }
+    if (op == "FloatStackPush" || op == "FloatStackPop") {
+        if (operandType != MemoryType::Float) {
+            reportError("Stack operation expects float type");
+        }
+        return MemoryType::Float;
+    }
+    if (op == "StringStackPush" || op == "StringStackPop") {
+        if (operandType != MemoryType::String) {
+            reportError("Stack operation expects string type");
+        }
+        return MemoryType::String;
+    }
+    if (op == "BooleanStackPush" || op == "BooleanStackPop") {
+        if (operandType != MemoryType::Boolean) {
+            reportError("Stack operation expects boolean type");
+        }
+        return MemoryType::Boolean;
+    }
+
+    reportError("Unknown stack operation: " + op);
+    return MemoryType::Integer;
 }
 
 // エラー報告

@@ -76,7 +76,7 @@ private:
     void checkFileInputOutput(const ASTNode* node);
 
     // スタック操作のチェック
-    void checkStackOperation(const ASTNode* node);
+    MemoryType checkStackOperation(const ASTNode* node);
     
     // エラー報告
     void reportError(const std::string& message);
