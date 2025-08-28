@@ -199,47 +199,71 @@ std::shared_ptr<ASTNode> Parser::parseTerm() {
 std::shared_ptr<ASTNode> Parser::parseFactor() {
     debugLog("因子を解析中...");
 
+    std::shared_ptr<ASTNode> node;
+
     if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
         debugLog("数値を解析中...");
-        auto node = std::make_shared<ASTNode>(NodeType::Number, tokens[pos].value);
+        node = std::make_shared<ASTNode>(NodeType::Number, tokens[pos].value);
         advance();
-        return node;
     } 
     else if (tokens[pos].type == TokenType::String) {
         debugLog("文字列を解析中...");
-        auto node = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        node = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance();
-        return node;
     } 
     else if (tokens[pos].type == TokenType::MemoryRef) {
-        auto node = parseMemoryRef();
-        return node;
+        node = parseMemoryRef();
     } 
     else if (tokens[pos].type == TokenType::LParen) {
         debugLog("括弧を解析中...");
         advance(); // "("
-        auto node = parseExpression(); // 括弧内の式を解析
+        node = parseExpression(); // 括弧内の式を解析
         if (tokens[pos].type != TokenType::RParen) {
-            // reportError("Expected ')' after expression in factor");
-            // return nullptr;
             return recoverFromError("Expected ')' after expression in factor");
         }
         advance(); // ")"
-        return node;
     } 
     else if (tokens[pos].type == TokenType::IntCast ||
         tokens[pos].type == TokenType::FloatCast ||
         tokens[pos].type == TokenType::StrCast ||
         tokens[pos].type == TokenType::BoolCast) {
         debugLog("型変換を解析中...");
-        return parseCast();
+        node = parseCast();
     }
     else {
-        // reportError("Error: Expected factor");
-        // return nullptr;
         return recoverFromError("Error: Expected factor");
     }
 
+    // スタック操作解析
+    if (pos < tokens.size() && (
+        tokens[pos].type == TokenType::IntegerStackPush ||
+        tokens[pos].type == TokenType::IntegerStackPop ||
+        tokens[pos].type == TokenType::FloatStackPush ||
+        tokens[pos].type == TokenType::FloatStackPop ||
+        tokens[pos].type == TokenType::StringStackPush ||
+        tokens[pos].type == TokenType::StringStackPop ||
+        tokens[pos].type == TokenType::BooleanStackPush ||
+        tokens[pos].type == TokenType::BooleanStackPop
+    )) {
+        debugLog("スタック操作を解析中...");
+        std::string operation;
+        if (tokens[pos].type == TokenType::IntegerStackPush) operation = "IntegerStackPush";
+        else if (tokens[pos].type == TokenType::IntegerStackPop) operation = "IntegerStackPop";
+        else if (tokens[pos].type == TokenType::FloatStackPush) operation = "FloatStackPush";
+        else if (tokens[pos].type == TokenType::FloatStackPop) operation = "FloatStackPop";
+        else if (tokens[pos].type == TokenType::StringStackPush) operation = "StringStackPush";
+        else if (tokens[pos].type == TokenType::StringStackPop) operation = "StringStackPop";
+        else if (tokens[pos].type == TokenType::BooleanStackPush) operation = "BooleanStackPush";
+        else if (tokens[pos].type == TokenType::BooleanStackPop) operation = "BooleanStackPop";
+
+        advance(); // スタック操作をスキップ
+
+        auto stackNode = std::make_shared<ASTNode>(NodeType::StackOperation, operation);
+        stackNode->children.push_back(node);
+        node = stackNode;
+    }
+
+    return node;
 }
 
 // 代入文と複合代入の解析
