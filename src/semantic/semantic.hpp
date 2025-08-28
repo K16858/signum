@@ -37,6 +37,12 @@ private:
     // エラーメッセージを保存
     std::vector<std::string> errors;
 
+    // スタックカウント
+    size_t intStackSize = 0;
+    size_t floatStackSize = 0;
+    size_t stringStackSize = 0;
+    size_t booleanStackSize = 0;
+
 public:
     // コンストラクタ
     SemanticAnalyzer() = default;
