@@ -400,27 +400,91 @@ MemoryType SemanticAnalyzer::checkStackOperation(const ASTNode* node) {
     auto operandType = visitNode(node->children[0].get());
 
     // 操作ごとに型チェック
-    if (op == "IntegerStackPush" || op == "IntegerStackPop") {
+    if (op == "IntegerStackPush") {
         if (operandType != MemoryType::Integer) {
             reportError("Stack operation expects integer type");
         }
+        if (intStackSize >= 1024) {
+            reportError("Integer stack overflow (max 1024)");
+        } else {
+            intStackSize++;
+        }
         return MemoryType::Integer;
     }
-    if (op == "FloatStackPush" || op == "FloatStackPop") {
+    if (op == "IntegerStackPop") {
+        if (operandType != MemoryType::Integer) {
+            reportError("Stack operation expects integer type");
+        }
+        if (intStackSize == 0) {
+            reportError("Integer stack underflow");
+        } else {
+            intStackSize--;
+        }
+        return MemoryType::Integer;
+    }
+    if (op == "FloatStackPush") {
         if (operandType != MemoryType::Float) {
             reportError("Stack operation expects float type");
         }
+        if (floatStackSize >= 1024) {
+            reportError("Float stack overflow (max 1024)");
+        } else {
+            floatStackSize++;
+        }
         return MemoryType::Float;
     }
-    if (op == "StringStackPush" || op == "StringStackPop") {
+    if (op == "FloatStackPop") {
+        if (operandType != MemoryType::Float) {
+            reportError("Stack operation expects float type");
+        }
+        if (floatStackSize == 0) {
+            reportError("Float stack underflow");
+        } else {
+            floatStackSize--;
+        }
+        return MemoryType::Float;
+    }
+    if (op == "StringStackPush") {
         if (operandType != MemoryType::String) {
             reportError("Stack operation expects string type");
         }
+        if (stringStackSize >= 1024) {
+            reportError("String stack overflow (max 1024)");
+        } else {
+            stringStackSize++;
+        }
         return MemoryType::String;
     }
-    if (op == "BooleanStackPush" || op == "BooleanStackPop") {
+    if (op == "StringStackPop") {
+        if (operandType != MemoryType::String) {
+            reportError("Stack operation expects string type");
+        }
+        if (stringStackSize == 0) {
+            reportError("String stack underflow");
+        } else {
+            stringStackSize--;
+        }
+        return MemoryType::String;
+    }
+    if (op == "BooleanStackPush") {
         if (operandType != MemoryType::Boolean) {
             reportError("Stack operation expects boolean type");
+        }
+        if (booleanStackSize >= 1024) {
+            reportError("Boolean stack overflow (max 1024)");
+        } else {
+            booleanStackSize++;
+        }
+        return MemoryType::Boolean;
+    }
+    if (op == "BooleanStackPop") {
+        if (operandType != MemoryType::Boolean) {
+            reportError("Stack operation expects boolean type");
+        }
+        if (booleanStackSize == 0) {
+            reportError("Boolean stack underflow");
+        } else {
+            booleanStackSize--;
         }
         return MemoryType::Boolean;
     }
