@@ -152,6 +152,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateFileInputStatement(node);
         case NodeType::FileOutputStatement:
             return evaluateFileOutputStatement(node);
+        case NodeType::StackOperation:
+            return evaluateStackOperation(node);
         default:
             throw std::runtime_error("Unknown node type: " + std::to_string(static_cast<int>(node->type)));
     }
@@ -567,6 +569,58 @@ Value Interpreter::evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& n
     
     file << valueToString(value);
     return Value();
+}
+
+// スタック操作ノード評価
+Value Interpreter::evaluateStackOperation(const std::shared_ptr<ASTNode>& node) {
+    std::string op = node->value;
+    Value val = evaluateNode(node->children[0]);
+
+    if (op == "IntegerStackPush") {
+        if (intStack.size() >= 1024) throw std::runtime_error("Integer stack overflow");
+        intStack.push_back(std::get<int>(val));
+        return Value();
+    }
+    if (op == "IntegerStackPop") {
+        if (intStack.empty()) throw std::runtime_error("Integer stack underflow");
+        int result = intStack.back();
+        intStack.pop_back();
+        return result;
+    }
+    if (op == "FloatStackPush") {
+        if (floatStack.size() >= 1024) throw std::runtime_error("Float stack overflow");
+        floatStack.push_back(std::get<double>(val));
+        return Value();
+    }
+    if (op == "FloatStackPop") {
+        if (floatStack.empty()) throw std::runtime_error("Float stack underflow");
+        double result = floatStack.back();
+        floatStack.pop_back();
+        return result;
+    }
+    if (op == "StringStackPush") {
+        if (stringStack.size() >= 1024) throw std::runtime_error("String stack overflow");
+        stringStack.push_back(std::get<std::string>(val));
+        return Value();
+    }
+    if (op == "StringStackPop") {
+        if (stringStack.empty()) throw std::runtime_error("String stack underflow");
+        std::string result = stringStack.back();
+        stringStack.pop_back();
+        return result;
+    }
+    if (op == "BooleanStackPush") {
+        if (booleanStack.size() >= 1024) throw std::runtime_error("Boolean stack overflow");
+        booleanStack.push_back(std::get<bool>(val));
+        return Value();
+    }
+    if (op == "BooleanStackPop") {
+        if (booleanStack.empty()) throw std::runtime_error("Boolean stack underflow");
+        bool result = booleanStack.back();
+        booleanStack.pop_back();
+        return result;
+    }
+    throw std::runtime_error("Unknown stack operation: " + op);
 }
 
 // メモリ参照ノード評価
