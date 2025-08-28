@@ -85,6 +85,7 @@ public:
     Value evaluateOutputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node);
+    Value evaluateStackOperation(const std::shared_ptr<ASTNode>& node);
     
     // 変数の取得と設定
     Value getMemoryValue(char type, int index);
