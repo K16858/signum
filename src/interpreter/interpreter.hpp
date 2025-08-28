@@ -20,6 +20,9 @@ constexpr size_t ARGS_START = 48;
 constexpr size_t RETURN_START = 56;
 constexpr size_t SYSTEM_START = 60;
 
+// スタックのサイズ
+constexpr size_t STACK_MAX_SIZE = 1024;
+
 class Interpreter {
 private:
     // 各型のメモリプール
@@ -27,7 +30,13 @@ private:
     std::array<Value, MEMORY_POOL_SIZE> stringPool; // @ (文字列)
     std::array<Value, MEMORY_POOL_SIZE> floatPool;  // ~ (浮動小数点)
     std::array<Value, MEMORY_POOL_SIZE> boolPool;   // % (真偽値)
-    
+
+    // 各型のスタック
+    std::vector<int> intStack;
+    std::vector<double> floatStack;
+    std::vector<std::string> stringStack;
+    std::vector<bool> booleanStack;
+
     // 関数テーブル
     std::unordered_map<int, std::shared_ptr<ASTNode>> functions;
     
@@ -45,6 +54,12 @@ public:
         stringPool.fill("");
         floatPool.fill(0.0);
         boolPool.fill(false);
+
+        // スタックの初期化
+        intStack.reserve(STACK_MAX_SIZE);
+        floatStack.reserve(STACK_MAX_SIZE);
+        stringStack.reserve(STACK_MAX_SIZE);
+        booleanStack.reserve(STACK_MAX_SIZE);
     }
     ~Interpreter() = default;
     
