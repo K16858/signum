@@ -109,8 +109,14 @@ std::vector<Token> Lexer::tokenize() {
 
         // メモリ参照
         if (source[pos] == '$') {
-            std::string memref = parseMemoryRef();
-            tokens.push_back({TokenType::MemoryRef, memref, line});
+            if (source[pos+1] == '^') {
+                std::string memref = parseMemoryRef();
+                tokens.push_back({TokenType::MemoryMapRef, memref, line});
+            }
+            else {
+                std::string memref = parseMemoryRef();
+                tokens.push_back({TokenType::MemoryRef, memref, line});
+            }
             continue;
         }
 
@@ -324,7 +330,7 @@ std::vector<Token> Lexer::tokenize() {
                     column += 2;
                 } 
                 else if (pos + 1 < source.size() && source[pos + 1] == '>') {
-                    tokens.push_back({TokenType::PlusEqual, "+>", line});
+                    tokens.push_back({TokenType::MapWindowSlide, "+>", line});
                     pos += 2;
                     column += 2;
                 } 
