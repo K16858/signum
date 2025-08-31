@@ -25,10 +25,17 @@ std::string Lexer::parseMemoryRef() {
     std::string memref = "";
     memref += source[pos++]; // "$"
     
-    while (pos < source.size() && (source[pos] == '#' || source[pos] == '@' || source[pos] == '~' || source[pos] == '%')) {
+    while (pos < source.size() && (source[pos] == '#' || source[pos] == '@' || source[pos] == '~' || source[pos] == '%' || source[pos] == '^')) {
         memref += source[pos++]; // 型記号
         column++;
-        
+
+        if (memref.back() == '^' && pos < source.size()) {
+            if (source[pos] == '#' || source[pos] == '@' || source[pos] == '~' || source[pos] == '%') {
+                memref += source[pos++]; // マップ型記号
+                column++;
+            }
+        }
+            
         // ネストされた参照の場合
         if (pos < source.size() && source[pos] == '$') {
             memref += parseMemoryRef(); // 再帰
