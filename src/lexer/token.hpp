@@ -67,10 +67,7 @@ enum class TokenType {
     StringStackPop,
     BooleanStackPush,
     BooleanStackPop,
-    IntegerMemoryMap,
-    FloatMemoryMap,
-    StringMemoryMap,
-    BooleanMemoryMap,
+    MemoryMapRef,
     MapWindowSlide
 };
 
