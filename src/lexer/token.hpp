@@ -66,7 +66,11 @@ enum class TokenType {
     StringStackPush,
     StringStackPop,
     BooleanStackPush,
-    BooleanStackPop
+    BooleanStackPop,
+    IntegerMemoryMap,
+    FloatMemoryMap,
+    StringMemoryMap,
+    BooleanMemoryMap
 };
 
 // トークン構造体

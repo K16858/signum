@@ -66,6 +66,10 @@ std::string tokenType2String(TokenType type) {
         case TokenType::StringStackPop: return "<|@";       // 文字列スタックポップ
         case TokenType::BooleanStackPush: return "|>%";     // ブールスタックプッシュ
         case TokenType::BooleanStackPop: return "<|%";      // ブールスタックポップ
+        case TokenType::IntegerMemoryMap: return "IntMemoryMap";   // 整数メモリマップ
+        case TokenType::FloatMemoryMap: return "FloatMemoryMap";   // 浮動小数点メモリマップ
+        case TokenType::StringMemoryMap: return "StringMemoryMap"; // 文字列メモリマップ
+        case TokenType::BooleanMemoryMap: return "BooleanMemoryMap"; // ブールメモリマップ
 
         default: return "Unknown";                          // 不明なトークン
     }
