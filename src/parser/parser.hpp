@@ -79,6 +79,9 @@ public:
     // スタック操作の解析
     std::shared_ptr<ASTNode> parseStackOperation();
 
+    // マップウィンドウスライドの解析
+    std::shared_ptr<ASTNode> parseMapWindowSlide();
+
     // エラー関連
     bool hasErrors() const { return !errors.empty(); }
     void printErrors() const {
