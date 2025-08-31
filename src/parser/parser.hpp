@@ -79,6 +79,9 @@ public:
     // スタック操作の解析
     std::shared_ptr<ASTNode> parseStackOperation();
 
+    // メモリマップ参照の解析
+    std::shared_ptr<ASTNode> parseMemoryMapRef();
+
     // マップウィンドウスライドの解析
     std::shared_ptr<ASTNode> parseMapWindowSlide();
 

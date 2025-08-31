@@ -157,6 +157,17 @@ std::shared_ptr<ASTNode> Parser::parseMemoryRef() {
     return recoverFromError("Error: Expected memory reference");
 }
 
+// メモリマップ参照の解析
+std::shared_ptr<ASTNode> Parser::parseMemoryMapRef() {
+    if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto node = std::make_shared<ASTNode>(NodeType::MemoryMapRef, tokens[pos].value);
+        advance();
+        return node;
+    }
+
+    return recoverFromError("Error: Expected memory map reference");
+}
+
 // 加減算式の解析
 std::shared_ptr<ASTNode> Parser::parseExpression() {
     debugLog("加減算式を解析中...");
@@ -674,7 +685,8 @@ std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
         auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance(); // 文字列をスキップ
         node->children.push_back(std::move(fileNode));
-    } else if (tokens[pos].type == TokenType::MemoryRef) {
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
         auto fileNode = parseMemoryRef();
         if (!fileNode) {
             // reportError("Expected memory reference for file name");
@@ -682,7 +694,8 @@ std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
             return recoverFromError("Expected memory reference for file name");
         }
         node->children.push_back(std::move(fileNode));
-    } else {
+    } 
+    else {
         // reportError("Expected string or memory reference for file name");
         // return nullptr;
         return recoverFromError("Expected string or memory reference for file name");
