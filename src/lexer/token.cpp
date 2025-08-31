@@ -70,6 +70,7 @@ std::string tokenType2String(TokenType type) {
         case TokenType::FloatMemoryMap: return "FloatMemoryMap";   // 浮動小数点メモリマップ
         case TokenType::StringMemoryMap: return "StringMemoryMap"; // 文字列メモリマップ
         case TokenType::BooleanMemoryMap: return "BooleanMemoryMap"; // ブールメモリマップ
+        case TokenType::MapWindowSlide: return "MapWindowSlide";     // メモリマップウィンドウスライド
 
         default: return "Unknown";                          // 不明なトークン
     }

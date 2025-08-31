@@ -70,7 +70,8 @@ enum class TokenType {
     IntegerMemoryMap,
     FloatMemoryMap,
     StringMemoryMap,
-    BooleanMemoryMap
+    BooleanMemoryMap,
+    MapWindowSlide
 };
 
 // トークン構造体
