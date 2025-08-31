@@ -323,6 +323,11 @@ std::vector<Token> Lexer::tokenize() {
                     pos += 2;
                     column += 2;
                 } 
+                else if (pos + 1 < source.size() && source[pos + 1] == '>') {
+                    tokens.push_back({TokenType::PlusEqual, "+>", line});
+                    pos += 2;
+                    column += 2;
+                } 
                 else {
                     tokens.push_back({TokenType::Plus, "+", line});
                     ++pos;
