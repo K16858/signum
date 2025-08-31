@@ -33,6 +33,8 @@ enum class NodeType {
     FileInputStatement,
     FileOutputStatement,
     StackOperation,
+    MemoryMapRef,
+    MapWindowSlide,
     Error, // エラー用ノード
 };
 

@@ -28,6 +28,8 @@ std::string nodeType2String(NodeType type) {
         case NodeType::FileInputStatement: return "FileInputStatement";
         case NodeType::FileOutputStatement: return "FileOutputStatement";
         case NodeType::StackOperation: return "StackOperation";
+        case NodeType::MemoryMapRef: return "MemoryMapRef";
+        case NodeType::MapWindowSlide: return "MapWindowSlide";
         case NodeType::Error: return "Error";
         default: return "Unknown";
     }
