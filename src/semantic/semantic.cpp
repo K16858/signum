@@ -188,13 +188,28 @@ MemoryType SemanticAnalyzer::checkMemoryMapRef(const ASTNode* node) {
             if (index < 0) {
                 reportError("Memory map index must be non-negative: " + mapRef);
             }
-            // 最大1024要素
+            // 最大1024要素なので、インデックスは0-1023まで有効
             if (index >= 1024) {
                 reportError("Memory map index out of range (max 1023): " + mapRef);
+            }
+            
+            // 既に型が記録されている場合は、その型を返す
+            if (memoryMapTypes.count(mapRef) > 0) {
+                MemoryType recordedType = memoryMapTypes[mapRef];
+                // 期待される型と記録された型が一致するかチェック
+                if (!isCompatible(mapType, recordedType)) {
+                    reportError("Memory map element type inconsistency: " + mapRef + 
+                                " expected " + memoryTypeToString(mapType) + 
+                                " but previously used as " + memoryTypeToString(recordedType));
+                }
+                return recordedType;
             }
         } catch (...) {
             reportError("Invalid memory map index: " + mapRef);
         }
+    } else {
+        // インデックスなしのメモリマップ参照（$^#など）
+        // 全体のメモリマップを参照する場合（スライド操作などで使用）
     }
     
     return mapType;
@@ -249,9 +264,34 @@ MemoryType SemanticAnalyzer::checkAssignment(const ASTNode* node) {
     
     // 型の互換性をチェック
     if (!isCompatible(leftType, rightType)) {
-        reportError("Expression type mismatch: " +
-                    memoryTypeToString(leftType) + " vs " + 
-                    memoryTypeToString(rightType));
+        std::string leftSide = "";
+        std::string rightSide = "";
+        
+        // 左辺の詳細情報を取得
+        if (node->children[0]->type == NodeType::MemoryRef) {
+            leftSide = "memory reference " + node->children[0]->value;
+        } else if (node->children[0]->type == NodeType::MemoryMapRef) {
+            leftSide = "memory map reference " + node->children[0]->value;
+        } else {
+            leftSide = "left side";
+        }
+        
+        // 右辺の詳細情報を取得
+        if (node->children[1]->type == NodeType::Number) {
+            rightSide = "number " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::String) {
+            rightSide = "string " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::MemoryRef) {
+            rightSide = "memory reference " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::MemoryMapRef) {
+            rightSide = "memory map reference " + node->children[1]->value;
+        } else {
+            rightSide = "right side";
+        }
+        
+        reportError("Type mismatch in assignment: " + leftSide + " (" + 
+                    memoryTypeToString(leftType) + ") vs " + rightSide + " (" + 
+                    memoryTypeToString(rightType) + ")");
     }
     
     // メモリ参照なら型を記録
@@ -260,7 +300,29 @@ MemoryType SemanticAnalyzer::checkAssignment(const ASTNode* node) {
     }
     else if (node->children[0]->type == NodeType::MemoryMapRef) {
         // メモリマップ参照の場合も型を記録
-        memoryMapTypes[node->children[0]->value] = leftType;
+        std::string mapRef = node->children[0]->value;
+        memoryMapTypes[mapRef] = leftType;
+        
+        // メモリマップ要素への代入の特別なチェック
+        if (mapRef.size() > 3) {
+            // インデックス付きメモリマップ参照（$^#1など）への代入
+            // 型の厳密なチェック
+            char typeChar = mapRef[2];
+            MemoryType expectedType;
+            switch (typeChar) {
+                case '#': expectedType = MemoryType::Integer; break;
+                case '@': expectedType = MemoryType::String; break;
+                case '~': expectedType = MemoryType::Float; break;
+                case '%': expectedType = MemoryType::Boolean; break;
+                default: expectedType = MemoryType::Integer; break;
+            }
+            
+            if (!isCompatible(expectedType, rightType)) {
+                reportError("Memory map element type mismatch: " + mapRef + " expects " + 
+                            memoryTypeToString(expectedType) + " but got " + 
+                            memoryTypeToString(rightType));
+            }
+        }
     }
     
     return leftType;
