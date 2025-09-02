@@ -82,6 +82,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // メモリ参照
             return checkMemoryRef(node);
             
+        case NodeType::MemoryMapRef:
+            // メモリマップ参照
+            return checkMemoryMapRef(node);
+            
         case NodeType::Number:
             // 数値
             if (node->value.find('.') != std::string::npos) {
@@ -154,6 +158,48 @@ MemoryType SemanticAnalyzer::checkMemoryRef(const ASTNode* node) {
     return getTypeFromMemRef(memRef);
 }
 
+// メモリマップ参照のチェック
+MemoryType SemanticAnalyzer::checkMemoryMapRef(const ASTNode* node) {
+    // メモリマップ参照の形式をチェック
+    std::string mapRef = node->value;
+    if (mapRef.size() < 3 || mapRef.substr(0, 2) != "$^") {
+        reportError("Invalid memory map reference: " + mapRef);
+        return MemoryType::Integer;
+    }
+    
+    // メモリマップタイプを取得
+    char typeChar = mapRef[2];
+    MemoryType mapType;
+    switch (typeChar) {
+        case '#': mapType = MemoryType::Integer; break;
+        case '@': mapType = MemoryType::String; break;
+        case '~': mapType = MemoryType::Float; break;
+        case '%': mapType = MemoryType::Boolean; break;
+        default:
+            reportError("Unknown memory map type: " + std::string(1, typeChar));
+            return MemoryType::Integer;
+    }
+    
+    // インデックスがある場合はチェック
+    if (mapRef.size() > 3) {
+        std::string indexStr = mapRef.substr(3);
+        try {
+            int index = std::stoi(indexStr);
+            if (index < 0) {
+                reportError("Memory map index must be non-negative: " + mapRef);
+            }
+            // 最大1024要素
+            if (index >= 1024) {
+                reportError("Memory map index out of range (max 1023): " + mapRef);
+            }
+        } catch (...) {
+            reportError("Invalid memory map index: " + mapRef);
+        }
+    }
+    
+    return mapType;
+}
+
 // メモリ参照から型を取得
 MemoryType SemanticAnalyzer::getTypeFromMemRef(const std::string& memRef) {
     if (memRef.size() < 2) return MemoryType::Integer;
@@ -211,6 +257,10 @@ MemoryType SemanticAnalyzer::checkAssignment(const ASTNode* node) {
     // メモリ参照なら型を記録
     if (node->children[0]->type == NodeType::MemoryRef) {
         memoryTypes[node->children[0]->value] = leftType;
+    }
+    else if (node->children[0]->type == NodeType::MemoryMapRef) {
+        // メモリマップ参照の場合も型を記録
+        memoryMapTypes[node->children[0]->value] = leftType;
     }
     
     return leftType;
@@ -383,9 +433,20 @@ void SemanticAnalyzer::checkFileInputOutput(const ASTNode* node) {
         return;
     }
     
-    // 出力する式のチェック
-    auto outputExprNode = node->children[1].get();
-    visitNode(outputExprNode);
+    // 入出力対象のチェック（メモリ参照またはメモリマップ参照）
+    auto targetNode = node->children[1].get();
+    auto targetType = visitNode(targetNode);
+    
+    // メモリマップ入出力の場合の特別なチェック
+    if (targetNode->type == NodeType::MemoryMapRef) {
+        if (node->type == NodeType::FileInputStatement) {
+            // ファイル→メモリマップ：ファイルからメモリマップにロード
+            // ファイル形式とメモリマップ型の整合性をチェック（将来拡張）
+        } else if (node->type == NodeType::FileOutputStatement) {
+            // メモリマップ→ファイル：メモリマップをファイルに書き出し
+            // メモリマップが初期化されているかチェック（将来拡張）
+        }
+    }
 }
 
 // スタック操作のチェック

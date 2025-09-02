@@ -31,6 +31,9 @@ private:
     // メモリ参照の型情報を記録
     std::unordered_map<std::string, MemoryType> memoryTypes;
     
+    // メモリマップ参照の型情報を記録
+    std::unordered_map<std::string, MemoryType> memoryMapTypes;
+    
     // 関数の定義情報を記録
     std::unordered_map<std::string, FunctionInfo> functions;
     
@@ -62,6 +65,9 @@ private:
     
     // メモリ参照のチェック
     MemoryType checkMemoryRef(const ASTNode* node);
+    
+    // メモリマップ参照のチェック
+    MemoryType checkMemoryMapRef(const ASTNode* node);
     
     // 式のチェック
     MemoryType checkExpression(const ASTNode* node);
