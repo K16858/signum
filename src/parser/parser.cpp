@@ -95,6 +95,45 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
             }
         }
 
+        // メモリマップ参照
+        case TokenType::MemoryMapRef: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                
+                // 代入系演算子
+                if (nextType == TokenType::Assign || 
+                    nextType == TokenType::PlusEqual || 
+                    nextType == TokenType::MinusEqual ||
+                    nextType == TokenType::MultiplyEqual ||
+                    nextType == TokenType::DivideEqual ||
+                    nextType == TokenType::ModulusEqual) {
+                    return parseAssignment();
+                }
+                // ファイル出力（マップ→ファイル）
+                else if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // スライド操作
+                else if (nextType == TokenType::MapWindowSlide) {
+                    return parseMapWindowSlide();
+                }
+                // 四則演算子や比較演算子の場合は式として扱う
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance(); // セミコロンスキップ
+                    }
+                    return expr;
+                }
+            }
+            // 単独メモリマップ参照
+            auto ref = parseMemoryMapRef();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return ref;
+        }
+
         // 関数呼び出し
         case TokenType::FunctionCall:
             return parseFunctionCall();
@@ -232,6 +271,9 @@ std::shared_ptr<ASTNode> Parser::parseFactor() {
     else if (tokens[pos].type == TokenType::MemoryRef) {
         node = parseMemoryRef();
     } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        node = parseMemoryMapRef();
+    } 
     else if (tokens[pos].type == TokenType::LParen) {
         debugLog("括弧を解析中...");
         advance(); // "("
@@ -288,11 +330,21 @@ std::shared_ptr<ASTNode> Parser::parseFactor() {
 std::shared_ptr<ASTNode> Parser::parseAssignment() {
     debugLog("代入文を解析中...");
     
-    auto left = parseMemoryRef(); // 左辺のメモリ参照
+    std::shared_ptr<ASTNode> left;
+    
+    // メモリ参照かメモリマップ参照かを判定
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        left = parseMemoryRef();
+    } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        left = parseMemoryMapRef();
+    } 
+    else {
+        return recoverFromError("Error: Expected memory reference or memory map reference on left side of assignment");
+    }
+    
     if (!left) {
-        // reportError("Error: Expected memory reference on left side of assignment");
-        // return nullptr;
-        return recoverFromError("Error: Expected memory reference on left side of assignment");
+        return recoverFromError("Error: Expected memory reference or memory map reference on left side of assignment");
     }
 
     // 演算子タイプを確認
@@ -902,6 +954,12 @@ std::shared_ptr<ASTNode> Parser::parseStackOperation() {
     advance(); // セミコロンをスキップ
 
     return node;
+}
+
+// メモリマップスライドの解析
+std::shared_ptr<ASTNode> Parser::parseMapWindowSlide() {
+    debugLog("メモリマップウィンドウスライドを解析中...");
+
 }
 
 std::shared_ptr<ASTNode> Parser::recoverFromError(const std::string& message) {
