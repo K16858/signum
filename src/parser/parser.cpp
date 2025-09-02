@@ -175,6 +175,21 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
         case TokenType::StrCast:
         case TokenType::BoolCast:
             return parseCast(); // 型変換の解析
+
+        // スライド操作
+        case TokenType::Integer:
+        case TokenType::Float:
+            if (pos + 1 < tokens.size() && tokens[pos+1].type == TokenType::MapWindowSlide) {
+                return parseMapWindowSlide();
+            }
+            // それ以外は通常の式として処理
+            else {
+                auto expr = parseExpression();
+                if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                    advance();
+                }
+                return expr;
+            }
             
         // その他の開始トークン（数値や文字列など）
         default:
@@ -663,6 +678,13 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
         }
         node->children.push_back(std::move(ref));
     } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto ref = parseMemoryMapRef();
+        if (!ref) {
+            return recoverFromError("Expected memory map reference in file output statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
     else if (tokens[pos].type == TokenType::String) {
         auto strNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance(); // 文字列をスキップ
@@ -720,8 +742,15 @@ std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
         }
         node->children.push_back(std::move(ref));
     } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto ref = parseMemoryMapRef();
+        if (!ref) {
+            return recoverFromError("Expected memory map reference in file input statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
     else {
-        return recoverFromError("Expected memory reference in file input statement");
+        return recoverFromError("Expected memory reference or memory map reference in file input statement");
     }
     
     if (tokens[pos].type != TokenType::Semicolon) {
@@ -897,6 +926,41 @@ std::shared_ptr<ASTNode> Parser::parseMapWindowSlide() {
     auto node = std::make_shared<ASTNode>(NodeType::MapWindowSlide, "+>");
     node->children.push_back(std::move(mapRef));
     node->children.push_back(std::move(slideAmount));
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        return recoverFromError("Expected ';' after map slide statement");
+    }
+    advance(); // セミコロンをスキップ
+    
+    return node;
+}
+
+// メモリマップウィンドウスライドの解析
+std::shared_ptr<ASTNode> Parser::parseMapWindowSlide() {
+    debugLog("メモリマップウィンドウスライドステートメントを解析中...");
+
+    // スライド量を解析
+    auto slideAmount = parseExpression();
+    if (!slideAmount) {
+        return recoverFromError("Expected slide amount expression");
+    }
+    
+    // スライド演算子をチェック
+    if (tokens[pos].type != TokenType::MapWindowSlide) {
+        return recoverFromError("Expected '+>' slide operator");
+    }
+    advance();
+    
+    // メモリマップ参照を解析
+    auto mapRef = parseMemoryMapRef();
+    if (!mapRef) {
+        return recoverFromError("Expected memory map reference in slide statement");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::MapWindowSlide, "+>");
+    node->children.push_back(std::move(slideAmount));
+    node->children.push_back(std::move(mapRef));
     
     // セミコロンチェック
     if (tokens[pos].type != TokenType::Semicolon) {
