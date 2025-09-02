@@ -89,6 +89,9 @@ private:
 
     // スタック操作のチェック
     MemoryType checkStackOperation(const ASTNode* node);
+
+    // マップウィンドウスライドのチェック
+    MemoryType checkMapWindowSlide(const ASTNode* node);
     
     // エラー報告
     void reportError(const std::string& message);

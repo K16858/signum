@@ -130,6 +130,9 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
         case NodeType::StackOperation:
             return checkStackOperation(node);
 
+        case NodeType::MapWindowSlide:
+            return checkMapWindowSlide(node);
+
         default:
             // その他のノード
             for (const auto& child : node->children) {
@@ -614,6 +617,35 @@ MemoryType SemanticAnalyzer::checkStackOperation(const ASTNode* node) {
 
     reportError("Unknown stack operation: " + op);
     return MemoryType::Integer;
+}
+
+// マップウィンドウスライドのチェック
+MemoryType SemanticAnalyzer::checkMapWindowSlide(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("Map window slide has too few children");
+        return MemoryType::Integer;
+    }
+
+    // スライド量をチェック
+    auto slideAmountType = visitNode(node->children[0].get());
+    if (slideAmountType != MemoryType::Integer) {
+        reportError("Map window slide amount must be integer type");
+    }
+
+    // メモリマップ参照をチェック
+    auto mapRefType = visitNode(node->children[1].get());
+    if (node->children[1]->type != NodeType::MemoryMapRef) {
+        reportError("Map window slide target must be memory map reference");
+        return MemoryType::Integer;
+    }
+
+    // メモリマップ参照がインデックスなしであることを確認
+    std::string mapRef = node->children[1]->value;
+    if (mapRef.size() > 3) {
+        reportError("Map window slide requires unindexed memory map reference (like $^#, not $^#0): " + mapRef);
+    }
+
+    return mapRefType;
 }
 
 // エラー報告
