@@ -80,6 +80,13 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
                 else if (nextType == TokenType::DoubleRAngleBracket) {
                     return parseFileInputStatement();
                 }
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance();
+                    }
+                    return expr;
+                }
             }
             else {
                 // reportError("Error: Unexpected end of input after string token");
@@ -618,7 +625,8 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
         auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance(); // 文字列をスキップ
         node->children.push_back(std::move(fileNode));
-    } else if (tokens[pos].type == TokenType::MemoryRef) {
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
         auto fileNode = parseMemoryRef();
         if (!fileNode) {
             // reportError("Expected memory reference for file name");
@@ -626,7 +634,8 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
             return recoverFromError("Expected memory reference for file name");
         }
         node->children.push_back(std::move(fileNode));
-    } else {
+    } 
+    else {
         // reportError("Expected string or memory reference for file name");
         // return nullptr;
         return recoverFromError("Expected string or memory reference for file name");
