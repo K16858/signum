@@ -960,6 +960,35 @@ std::shared_ptr<ASTNode> Parser::parseStackOperation() {
 std::shared_ptr<ASTNode> Parser::parseMapWindowSlide() {
     debugLog("メモリマップウィンドウスライドを解析中...");
 
+    // メモリマップ参照を解析
+    auto mapRef = parseMemoryMapRef();
+    if (!mapRef) {
+        return recoverFromError("Expected memory map reference in slide statement");
+    }
+    
+    // スライド演算子をチェック
+    if (tokens[pos].type != TokenType::MapWindowSlide) {
+        return recoverFromError("Expected '+>' slide operator");
+    }
+    advance();
+    
+    // スライド量を解析
+    auto slideAmount = parseExpression();
+    if (!slideAmount) {
+        return recoverFromError("Expected slide amount expression");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::MapWindowSlide, "+>");
+    node->children.push_back(std::move(mapRef));
+    node->children.push_back(std::move(slideAmount));
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        return recoverFromError("Expected ';' after map slide statement");
+    }
+    advance(); // セミコロンをスキップ
+    
+    return node;
 }
 
 std::shared_ptr<ASTNode> Parser::recoverFromError(const std::string& message) {
