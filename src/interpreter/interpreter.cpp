@@ -2,6 +2,195 @@
 
 # include "interpreter.hpp"
 
+// MemoryMapクラス
+// ファイルマッピング
+void MemoryMap::mapFile(const std::string& path, char type) {
+    filePath = path;
+    mapType = type;
+    windowOffset = 0;
+    ensureFileSize();
+}
+
+// ファイルサイズの確保・拡張
+void MemoryMap::ensureFileSize() {
+    std::ifstream checkFile(filePath, std::ios::binary | std::ios::ate);
+    size_t currentSize = 0;
+    
+    if (checkFile.is_open()) {
+        currentSize = checkFile.tellg();
+        checkFile.close();
+    }
+    
+    // 必要なサイズを計算
+    size_t elementSize;
+    switch (mapType) {
+        case '#': case '~': elementSize = 4; break; // int, float
+        case '%': elementSize = 1; break; // bool
+        case '@': elementSize = 1; break; // string (char配列)
+        default: throw std::runtime_error("Unknown map type for size calculation");
+    }
+    
+    size_t requiredSize = MEMORY_MAP_SIZE * elementSize;
+    
+    // ファイルサイズが不足している場合は拡張
+    if (currentSize < requiredSize) {
+        std::ofstream file(filePath, std::ios::binary | std::ios::app);
+        if (!file) {
+            throw std::runtime_error("Failed to create/extend file: " + filePath);
+        }
+        
+        // 不足分をゼロパディング
+        size_t paddingSize = requiredSize - currentSize;
+        std::vector<char> padding(paddingSize, 0);
+        file.write(padding.data(), paddingSize);
+        file.close();
+    }
+}
+
+// 要素の読み取り
+Value MemoryMap::readElement(size_t index) {
+    if (index >= MEMORY_MAP_SIZE) {
+        throw std::out_of_range("Memory map index out of range: " + std::to_string(index));
+    }
+    
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for reading: " + filePath);
+    }
+    
+    size_t elementSize;
+    size_t fileOffset;
+    
+    switch (mapType) {
+        case '#': // int (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                int32_t value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<int>(value);
+            }
+            break;
+            
+        case '~': // float (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                float value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<double>(value);
+            }
+            break;
+            
+        case '%': // bool (1バイト)
+            elementSize = 1;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                uint8_t value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<bool>(value);
+            }
+            break;
+            
+        case '@': // string (UTF-8可変長)
+            elementSize = 1;
+            fileOffset = windowOffset + index;
+            file.seekg(fileOffset);
+            {
+                char value;
+                file.read(&value, 1);
+                return std::string(1, value);
+            }
+            break;
+            
+        default:
+            throw std::runtime_error("Unknown memory map type: " + std::string(1, mapType));
+    }
+}
+
+// 要素の書き込み
+void MemoryMap::writeElement(size_t index, const Value& value) {
+    if (index >= MEMORY_MAP_SIZE) {
+        throw std::out_of_range("Memory map index out of range: " + std::to_string(index));
+    }
+    
+    std::fstream file(filePath, std::ios::binary | std::ios::in | std::ios::out);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + filePath);
+    }
+    
+    size_t elementSize;
+    size_t fileOffset;
+    
+    switch (mapType) {
+        case '#': // int (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                int32_t intVal = std::get<int>(value);
+                file.write(reinterpret_cast<const char*>(&intVal), sizeof(intVal));
+            }
+            break;
+            
+        case '~': // float (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                float floatVal = static_cast<float>(std::get<double>(value));
+                file.write(reinterpret_cast<const char*>(&floatVal), sizeof(floatVal));
+            }
+            break;
+            
+        case '%': // bool (1バイト)
+            elementSize = 1;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                uint8_t boolVal = std::get<bool>(value) ? 1 : 0;
+                file.write(reinterpret_cast<const char*>(&boolVal), sizeof(boolVal));
+            }
+            break;
+            
+        case '@': // string (UTF-8可変長)
+            elementSize = 1;
+            fileOffset = windowOffset + index;
+            file.seekp(fileOffset);
+            {
+                std::string strVal = std::get<std::string>(value);
+                if (!strVal.empty()) {
+                    file.write(&strVal[0], 1);
+                } 
+                else {
+                    char nullChar = '\0';
+                    file.write(&nullChar, 1);
+                }
+            }
+            break;
+            
+        default:
+            throw std::runtime_error("Unknown memory map type: " + std::string(1, mapType));
+    }
+    
+    file.flush();
+}
+
+// ウィンドウスライド
+void MemoryMap::slideWindow(int offset) {
+    int newOffset = static_cast<int>(windowOffset) + offset;
+    
+    // 0未満にならないようにクランプ
+    if (newOffset < 0) {
+        windowOffset = 0;
+    } else {
+        windowOffset = static_cast<size_t>(newOffset);
+    }
+}
+
 
 // メモリ参照を解決する
 Value Interpreter::resolveMemoryRef(const std::string& ref) {
