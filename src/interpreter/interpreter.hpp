@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <fstream>
 #include "../ast/ast.hpp"
 
 // 値の型
@@ -22,6 +23,40 @@ constexpr size_t SYSTEM_START = 60;
 
 // スタックのサイズ
 constexpr size_t STACK_MAX_SIZE = 1024;
+
+// メモリマップのサイズ
+constexpr size_t MEMORY_MAP_SIZE = 1024;
+
+// メモリマップ管理クラス
+class MemoryMap {
+private:
+    std::string filePath;
+    size_t windowOffset;
+    char mapType; // '#', '@', '~', '%'
+    
+public:
+    MemoryMap() : windowOffset(0), mapType('\0') {}
+    MemoryMap(const std::string& path, char type) : filePath(path), windowOffset(0), mapType(type) {}
+    
+    // ファイルマッピング
+    void mapFile(const std::string& path, char type);
+    
+    // 要素の読み書き
+    Value readElement(size_t index);
+    void writeElement(size_t index, const Value& value);
+    
+    // ウィンドウスライド
+    void slideWindow(int offset);
+    
+    // ファイル初期化・拡張
+    void ensureFileSize();
+    
+    // getter
+    bool isMapped() const { return !filePath.empty(); }
+    size_t getWindowOffset() const { return windowOffset; }
+    const std::string& getFilePath() const { return filePath; }
+    char getMapType() const { return mapType; }
+};
 
 class Interpreter {
 private:
@@ -39,6 +74,12 @@ private:
 
     // 関数テーブル
     std::unordered_map<int, std::shared_ptr<ASTNode>> functions;
+    
+    // メモリマップ
+    MemoryMap intMemoryMap;    // ^#
+    MemoryMap stringMemoryMap; // ^@
+    MemoryMap floatMemoryMap;  // ^~
+    MemoryMap boolMemoryMap;   // ^%
     
     // メモリ参照を解決する
     Value resolveMemoryRef(const std::string& ref);
@@ -86,8 +127,13 @@ public:
     Value evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateStackOperation(const std::shared_ptr<ASTNode>& node);
+    Value evaluateMemoryMapRef(const std::shared_ptr<ASTNode>& node);
+    Value evaluateMapWindowSlide(const std::shared_ptr<ASTNode>& node);
     
     // 変数の取得と設定
     Value getMemoryValue(char type, int index);
     void setMemoryValue(char type, int index, const Value& value);
+    
+    // メモリマップの取得
+    MemoryMap& getMemoryMap(char type);
 };
