@@ -385,10 +385,40 @@ Value Interpreter::evaluateAssignment(const std::shared_ptr<ASTNode>& node) {
     std::string varName = node->children[0]->value;
     Value value = evaluateNode(node->children[1]);
 
-    int startPos = (varName[0] == '$') ? 1 : 0;
-
-    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), value);
-    return value;
+    // メモリマップ参照かチェック
+    if (varName.size() >= 3 && varName.substr(0, 2) == "$^") {
+        char mapType = varName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        
+        if (!memMap.isMapped()) {
+            throw std::runtime_error("Memory map not initialized for assignment: " + varName);
+        }
+        
+        // インデックス取得
+        size_t index = 0;
+        if (varName.size() > 3) {
+            index = std::stoi(varName.substr(3));
+        }
+        
+        // string型の特殊処理
+        if (mapType == '@' && std::holds_alternative<std::string>(value)) {
+            std::string strValue = std::get<std::string>(value);
+            // 文字列を1文字ずつ連続配置
+            for (size_t i = 0; i < strValue.size() && (index + i) < MEMORY_MAP_SIZE; ++i) {
+                memMap.writeElement(index + i, std::string(1, strValue[i]));
+            }
+        } 
+        else {
+            memMap.writeElement(index, value);
+        }
+        
+        return value;
+    } else {
+        // 通常のメモリ参照への代入
+        int startPos = (varName[0] == '$') ? 1 : 0;
+        setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), value);
+        return value;
+    }
 }
 
 // 算術式ノード評価
@@ -737,31 +767,58 @@ Value Interpreter::evaluateOutputStatement(const std::shared_ptr<ASTNode>& node)
 // ファイル入力文ノード評価
 Value Interpreter::evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
-    std::string varName = node->children[1]->value;
+    std::string targetName = node->children[1]->value;
 
-    std::ifstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
+    // メモリマップ参照かチェック
+    if (targetName.size() >= 3 && targetName.substr(0, 2) == "$^") {
+        // メモリマップにファイルをマッピング
+        char mapType = targetName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        memMap.mapFile(filename, mapType);
+        return Value();
+    } else {
+        // 通常のメモリ参照への読み込み
+        std::ifstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        
+        int startPos = (targetName[0] == '$') ? 1 : 0;
+        setMemoryValue(targetName[startPos], evaluateMemoryIndex(targetName), content);
+        return Value();
     }
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    
-    int startPos = (varName[0] == '$') ? 1 : 0;
-    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), content);
-    return Value();
 }
 
 // ファイル出力文ノード評価
 Value Interpreter::evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
-    Value value = evaluateNode(node->children[1]);
+    std::string sourceName = node->children[1]->value;
 
-    std::ofstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
+    // メモリマップ参照かチェック
+    if (sourceName.size() >= 3 && sourceName.substr(0, 2) == "$^") {
+        // メモリマップからファイルに書き出し
+        char mapType = sourceName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        
+        if (!memMap.isMapped()) {
+            throw std::runtime_error("Memory map not initialized for output");
+        }
+        
+        return Value();
+    } 
+    else {
+        // 通常のメモリ参照からファイルへの出力
+        Value value = evaluateNode(node->children[1]);
+
+        std::ofstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+        
+        file << valueToString(value);
+        return Value();
     }
-    
-    file << valueToString(value);
-    return Value();
 }
 
 // スタック操作ノード評価
