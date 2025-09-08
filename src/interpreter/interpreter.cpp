@@ -691,3 +691,14 @@ Value Interpreter::evaluateMapWindowSlide(const std::shared_ptr<ASTNode>& node) 
     memMap.slideWindow(slideAmount);
     return Value();
 }
+
+// メモリマップの取得
+MemoryMap& Interpreter::getMemoryMap(char type) {
+    switch (type) {
+        case '#': return intMemoryMap;
+        case '@': return stringMemoryMap;
+        case '~': return floatMemoryMap;
+        case '%': return boolMemoryMap;
+        default: throw std::runtime_error("Unknown memory map type: " + std::string(1, type));
+    }
+}
