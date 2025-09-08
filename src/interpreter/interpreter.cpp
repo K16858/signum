@@ -154,6 +154,10 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateFileOutputStatement(node);
         case NodeType::StackOperation:
             return evaluateStackOperation(node);
+        case NodeType::MemoryMapRef:
+            return evaluateMemoryMapRef(node);
+        case NodeType::MapWindowSlide:
+            return evaluateMapWindowSlide(node);
         default:
             throw std::runtime_error("Unknown node type: " + std::to_string(static_cast<int>(node->type)));
     }
@@ -636,4 +640,54 @@ Value Interpreter::evaluateNumber(const std::shared_ptr<ASTNode>& node) {
 // 文字列ノード評価
 Value Interpreter::evaluateString(const std::shared_ptr<ASTNode>& node) {
     return node->value;
+}
+
+// メモリマップ参照ノード評価
+Value Interpreter::evaluateMemoryMapRef(const std::shared_ptr<ASTNode>& node) {
+    std::string mapRef = node->value;
+    if (mapRef.size() < 3 || mapRef.substr(0, 2) != "$^") {
+        throw std::runtime_error("Invalid memory map reference: " + mapRef);
+    }
+    
+    char mapType = mapRef[2];
+    MemoryMap& memMap = getMemoryMap(mapType);
+    
+    if (!memMap.isMapped()) {
+        throw std::runtime_error("Memory map not initialized for type: " + std::string(1, mapType));
+    }
+    
+    // インデックス取得
+    size_t index = 0;
+    if (mapRef.size() > 3) {
+        index = std::stoi(mapRef.substr(3));
+    }
+    
+    return memMap.readElement(index);
+}
+
+// マップウィンドウスライドノード評価
+Value Interpreter::evaluateMapWindowSlide(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.size() < 2) {
+        throw std::runtime_error("Map window slide missing arguments");
+    }
+    
+    // スライド量を取得
+    Value slideAmountValue = evaluateNode(node->children[0]);
+    int slideAmount = std::get<int>(slideAmountValue);
+    
+    // メモリマップ参照を取得
+    std::string mapRefStr = node->children[1]->value;
+    if (mapRefStr.size() < 3 || mapRefStr.substr(0, 2) != "$^") {
+        throw std::runtime_error("Invalid memory map reference in slide: " + mapRefStr);
+    }
+    
+    char mapType = mapRefStr[2];
+    MemoryMap& memMap = getMemoryMap(mapType);
+    
+    if (!memMap.isMapped()) {
+        throw std::runtime_error("Memory map not initialized for slide operation");
+    }
+    
+    memMap.slideWindow(slideAmount);
+    return Value();
 }
