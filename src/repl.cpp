@@ -5,7 +5,7 @@
 #include <string>
 
 void REPL::start() {
-    std::cout << "Welcome to the SigNum 0.1.0 alpha REPL!" << std::endl;
+    std::cout << "Welcome to the SigNum 1.0.0 REPL!" << std::endl;
     std::cout << "Type '.help' for a list of commands." << std::endl;
 
     running = true;
@@ -92,7 +92,13 @@ void REPL::printHelp() {
 
 void REPL::executeCode(const std::string& code) {
     try {
-        auto tokens = tokenize(code);
+        Lexer lexer(code);
+        auto tokens = lexer.tokenize();
+
+        if (lexer.hasErrors()) {
+            std::cerr << "Lexical Analysis Failed!" << std::endl;
+            lexer.printErrors();
+        }
 
         Parser parser(tokens);
         auto ast = parser.parseProgram();
@@ -106,7 +112,10 @@ void REPL::executeCode(const std::string& code) {
             }
         }
         else {
-            std::cout << "Parsing failed!" << std::endl;
+            std::cerr << "Parsing Failed!" << std::endl;
+            if (parser.hasErrors()) {
+                parser.printErrors();
+            }
         }
     }
     catch (const std::exception& e) {

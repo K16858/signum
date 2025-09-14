@@ -82,6 +82,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // メモリ参照
             return checkMemoryRef(node);
             
+        case NodeType::MemoryMapRef:
+            // メモリマップ参照
+            return checkMemoryMapRef(node);
+            
         case NodeType::Number:
             // 数値
             if (node->value.find('.') != std::string::npos) {
@@ -122,7 +126,13 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
         case NodeType::FileOutputStatement:
             checkFileInputOutput(node);
             return MemoryType::Integer;
-            
+
+        case NodeType::StackOperation:
+            return checkStackOperation(node);
+
+        case NodeType::MapWindowSlide:
+            return checkMapWindowSlide(node);
+
         default:
             // その他のノード
             for (const auto& child : node->children) {
@@ -149,6 +159,63 @@ MemoryType SemanticAnalyzer::checkMemoryRef(const ASTNode* node) {
     
     // メモリタイプを取得
     return getTypeFromMemRef(memRef);
+}
+
+// メモリマップ参照のチェック
+MemoryType SemanticAnalyzer::checkMemoryMapRef(const ASTNode* node) {
+    // メモリマップ参照の形式をチェック
+    std::string mapRef = node->value;
+    if (mapRef.size() < 3 || mapRef.substr(0, 2) != "$^") {
+        reportError("Invalid memory map reference: " + mapRef);
+        return MemoryType::Integer;
+    }
+    
+    // メモリマップタイプを取得
+    char typeChar = mapRef[2];
+    MemoryType mapType;
+    switch (typeChar) {
+        case '#': mapType = MemoryType::Integer; break;
+        case '@': mapType = MemoryType::String; break;
+        case '~': mapType = MemoryType::Float; break;
+        case '%': mapType = MemoryType::Boolean; break;
+        default:
+            reportError("Unknown memory map type: " + std::string(1, typeChar));
+            return MemoryType::Integer;
+    }
+    
+    // インデックスがある場合はチェック
+    if (mapRef.size() > 3) {
+        std::string indexStr = mapRef.substr(3);
+        try {
+            int index = std::stoi(indexStr);
+            if (index < 0) {
+                reportError("Memory map index must be non-negative: " + mapRef);
+            }
+            // 最大1024要素なので、インデックスは0-1023まで有効
+            if (index >= 1024) {
+                reportError("Memory map index out of range (max 1023): " + mapRef);
+            }
+            
+            // 既に型が記録されている場合は、その型を返す
+            if (memoryMapTypes.count(mapRef) > 0) {
+                MemoryType recordedType = memoryMapTypes[mapRef];
+                // 期待される型と記録された型が一致するかチェック
+                if (!isCompatible(mapType, recordedType)) {
+                    reportError("Memory map element type inconsistency: " + mapRef + 
+                                " expected " + memoryTypeToString(mapType) + 
+                                " but previously used as " + memoryTypeToString(recordedType));
+                }
+                return recordedType;
+            }
+        } catch (...) {
+            reportError("Invalid memory map index: " + mapRef);
+        }
+    } else {
+        // インデックスなしのメモリマップ参照（$^#など）
+        // 全体のメモリマップを参照する場合（スライド操作などで使用）
+    }
+    
+    return mapType;
 }
 
 // メモリ参照から型を取得
@@ -200,14 +267,65 @@ MemoryType SemanticAnalyzer::checkAssignment(const ASTNode* node) {
     
     // 型の互換性をチェック
     if (!isCompatible(leftType, rightType)) {
-        reportError("Expression type mismatch: " +
-                    memoryTypeToString(leftType) + " vs " + 
-                    memoryTypeToString(rightType));
+        std::string leftSide = "";
+        std::string rightSide = "";
+        
+        // 左辺の詳細情報を取得
+        if (node->children[0]->type == NodeType::MemoryRef) {
+            leftSide = "memory reference " + node->children[0]->value;
+        } else if (node->children[0]->type == NodeType::MemoryMapRef) {
+            leftSide = "memory map reference " + node->children[0]->value;
+        } else {
+            leftSide = "left side";
+        }
+        
+        // 右辺の詳細情報を取得
+        if (node->children[1]->type == NodeType::Number) {
+            rightSide = "number " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::String) {
+            rightSide = "string " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::MemoryRef) {
+            rightSide = "memory reference " + node->children[1]->value;
+        } else if (node->children[1]->type == NodeType::MemoryMapRef) {
+            rightSide = "memory map reference " + node->children[1]->value;
+        } else {
+            rightSide = "right side";
+        }
+        
+        reportError("Type mismatch in assignment: " + leftSide + " (" + 
+                    memoryTypeToString(leftType) + ") vs " + rightSide + " (" + 
+                    memoryTypeToString(rightType) + ")");
     }
     
     // メモリ参照なら型を記録
     if (node->children[0]->type == NodeType::MemoryRef) {
         memoryTypes[node->children[0]->value] = leftType;
+    }
+    else if (node->children[0]->type == NodeType::MemoryMapRef) {
+        // メモリマップ参照の場合も型を記録
+        std::string mapRef = node->children[0]->value;
+        memoryMapTypes[mapRef] = leftType;
+        
+        // メモリマップ要素への代入の特別なチェック
+        if (mapRef.size() > 3) {
+            // インデックス付きメモリマップ参照（$^#1など）への代入
+            // 型の厳密なチェック
+            char typeChar = mapRef[2];
+            MemoryType expectedType;
+            switch (typeChar) {
+                case '#': expectedType = MemoryType::Integer; break;
+                case '@': expectedType = MemoryType::String; break;
+                case '~': expectedType = MemoryType::Float; break;
+                case '%': expectedType = MemoryType::Boolean; break;
+                default: expectedType = MemoryType::Integer; break;
+            }
+            
+            if (!isCompatible(expectedType, rightType)) {
+                reportError("Memory map element type mismatch: " + mapRef + " expects " + 
+                            memoryTypeToString(expectedType) + " but got " + 
+                            memoryTypeToString(rightType));
+            }
+        }
     }
     
     return leftType;
@@ -380,9 +498,154 @@ void SemanticAnalyzer::checkFileInputOutput(const ASTNode* node) {
         return;
     }
     
-    // 出力する式のチェック
-    auto outputExprNode = node->children[1].get();
-    visitNode(outputExprNode);
+    // 入出力対象のチェック（メモリ参照またはメモリマップ参照）
+    auto targetNode = node->children[1].get();
+    auto targetType = visitNode(targetNode);
+    
+    // メモリマップ入出力の場合の特別なチェック
+    if (targetNode->type == NodeType::MemoryMapRef) {
+        if (node->type == NodeType::FileInputStatement) {
+            // ファイル→メモリマップ：ファイルからメモリマップにロード
+            // ファイル形式とメモリマップ型の整合性をチェック（将来拡張）
+        } else if (node->type == NodeType::FileOutputStatement) {
+            // メモリマップ→ファイル：メモリマップをファイルに書き出し
+            // メモリマップが初期化されているかチェック（将来拡張）
+        }
+    }
+}
+
+// スタック操作のチェック
+MemoryType SemanticAnalyzer::checkStackOperation(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("Stack operation missing operand");
+        return MemoryType::Integer;
+    }
+
+    // 操作種別
+    std::string op = node->value;
+    auto operandType = visitNode(node->children[0].get());
+
+    // 操作ごとに型チェック
+    if (op == "IntegerStackPush") {
+        if (operandType != MemoryType::Integer) {
+            reportError("Stack operation expects integer type");
+        }
+        if (intStackSize >= 1024) {
+            reportError("Integer stack overflow (max 1024)");
+        } else {
+            intStackSize++;
+        }
+        return MemoryType::Integer;
+    }
+    if (op == "IntegerStackPop") {
+        if (operandType != MemoryType::Integer) {
+            reportError("Stack operation expects integer type");
+        }
+        if (intStackSize == 0) {
+            reportError("Integer stack underflow");
+        } else {
+            intStackSize--;
+        }
+        return MemoryType::Integer;
+    }
+    if (op == "FloatStackPush") {
+        if (operandType != MemoryType::Float) {
+            reportError("Stack operation expects float type");
+        }
+        if (floatStackSize >= 1024) {
+            reportError("Float stack overflow (max 1024)");
+        } else {
+            floatStackSize++;
+        }
+        return MemoryType::Float;
+    }
+    if (op == "FloatStackPop") {
+        if (operandType != MemoryType::Float) {
+            reportError("Stack operation expects float type");
+        }
+        if (floatStackSize == 0) {
+            reportError("Float stack underflow");
+        } else {
+            floatStackSize--;
+        }
+        return MemoryType::Float;
+    }
+    if (op == "StringStackPush") {
+        if (operandType != MemoryType::String) {
+            reportError("Stack operation expects string type");
+        }
+        if (stringStackSize >= 1024) {
+            reportError("String stack overflow (max 1024)");
+        } else {
+            stringStackSize++;
+        }
+        return MemoryType::String;
+    }
+    if (op == "StringStackPop") {
+        if (operandType != MemoryType::String) {
+            reportError("Stack operation expects string type");
+        }
+        if (stringStackSize == 0) {
+            reportError("String stack underflow");
+        } else {
+            stringStackSize--;
+        }
+        return MemoryType::String;
+    }
+    if (op == "BooleanStackPush") {
+        if (operandType != MemoryType::Boolean) {
+            reportError("Stack operation expects boolean type");
+        }
+        if (booleanStackSize >= 1024) {
+            reportError("Boolean stack overflow (max 1024)");
+        } else {
+            booleanStackSize++;
+        }
+        return MemoryType::Boolean;
+    }
+    if (op == "BooleanStackPop") {
+        if (operandType != MemoryType::Boolean) {
+            reportError("Stack operation expects boolean type");
+        }
+        if (booleanStackSize == 0) {
+            reportError("Boolean stack underflow");
+        } else {
+            booleanStackSize--;
+        }
+        return MemoryType::Boolean;
+    }
+
+    reportError("Unknown stack operation: " + op);
+    return MemoryType::Integer;
+}
+
+// マップウィンドウスライドのチェック
+MemoryType SemanticAnalyzer::checkMapWindowSlide(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("Map window slide has too few children");
+        return MemoryType::Integer;
+    }
+
+    // スライド量をチェック
+    auto slideAmountType = visitNode(node->children[0].get());
+    if (slideAmountType != MemoryType::Integer) {
+        reportError("Map window slide amount must be integer type");
+    }
+
+    // メモリマップ参照をチェック
+    auto mapRefType = visitNode(node->children[1].get());
+    if (node->children[1]->type != NodeType::MemoryMapRef) {
+        reportError("Map window slide target must be memory map reference");
+        return MemoryType::Integer;
+    }
+
+    // メモリマップ参照がインデックスなしであることを確認
+    std::string mapRef = node->children[1]->value;
+    if (mapRef.size() > 3) {
+        reportError("Map window slide requires unindexed memory map reference (like $^#, not $^#0): " + mapRef);
+    }
+
+    return mapRefType;
 }
 
 // エラー報告

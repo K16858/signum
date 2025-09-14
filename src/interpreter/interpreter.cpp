@@ -2,6 +2,195 @@
 
 # include "interpreter.hpp"
 
+// MemoryMapクラス
+// ファイルマッピング
+void MemoryMap::mapFile(const std::string& path, char type) {
+    filePath = path;
+    mapType = type;
+    windowOffset = 0;
+    ensureFileSize();
+}
+
+// ファイルサイズの確保・拡張
+void MemoryMap::ensureFileSize() {
+    std::ifstream checkFile(filePath, std::ios::binary | std::ios::ate);
+    size_t currentSize = 0;
+    
+    if (checkFile.is_open()) {
+        currentSize = checkFile.tellg();
+        checkFile.close();
+    }
+    
+    // 必要なサイズを計算
+    size_t elementSize;
+    switch (mapType) {
+        case '#': case '~': elementSize = 4; break; // int, float
+        case '%': elementSize = 1; break; // bool
+        case '@': elementSize = 1; break; // string (char配列)
+        default: throw std::runtime_error("Unknown map type for size calculation");
+    }
+    
+    size_t requiredSize = MEMORY_MAP_SIZE * elementSize;
+    
+    // ファイルサイズが不足している場合は拡張
+    if (currentSize < requiredSize) {
+        std::ofstream file(filePath, std::ios::binary | std::ios::app);
+        if (!file) {
+            throw std::runtime_error("Failed to create/extend file: " + filePath);
+        }
+        
+        // 不足分をゼロパディング
+        size_t paddingSize = requiredSize - currentSize;
+        std::vector<char> padding(paddingSize, 0);
+        file.write(padding.data(), paddingSize);
+        file.close();
+    }
+}
+
+// 要素の読み取り
+Value MemoryMap::readElement(size_t index) {
+    if (index >= MEMORY_MAP_SIZE) {
+        throw std::out_of_range("Memory map index out of range: " + std::to_string(index));
+    }
+    
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for reading: " + filePath);
+    }
+    
+    size_t elementSize;
+    size_t fileOffset;
+    
+    switch (mapType) {
+        case '#': // int (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                int32_t value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<int>(value);
+            }
+            break;
+            
+        case '~': // float (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                float value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<double>(value);
+            }
+            break;
+            
+        case '%': // bool (1バイト)
+            elementSize = 1;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekg(fileOffset);
+            {
+                uint8_t value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+                return static_cast<bool>(value);
+            }
+            break;
+            
+        case '@': // string (UTF-8可変長)
+            elementSize = 1;
+            fileOffset = windowOffset + index;
+            file.seekg(fileOffset);
+            {
+                char value;
+                file.read(&value, 1);
+                return std::string(1, value);
+            }
+            break;
+            
+        default:
+            throw std::runtime_error("Unknown memory map type: " + std::string(1, mapType));
+    }
+}
+
+// 要素の書き込み
+void MemoryMap::writeElement(size_t index, const Value& value) {
+    if (index >= MEMORY_MAP_SIZE) {
+        throw std::out_of_range("Memory map index out of range: " + std::to_string(index));
+    }
+    
+    std::fstream file(filePath, std::ios::binary | std::ios::in | std::ios::out);
+    if (!file) {
+        throw std::runtime_error("Failed to open file for writing: " + filePath);
+    }
+    
+    size_t elementSize;
+    size_t fileOffset;
+    
+    switch (mapType) {
+        case '#': // int (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                int32_t intVal = std::get<int>(value);
+                file.write(reinterpret_cast<const char*>(&intVal), sizeof(intVal));
+            }
+            break;
+            
+        case '~': // float (4バイト)
+            elementSize = 4;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                float floatVal = static_cast<float>(std::get<double>(value));
+                file.write(reinterpret_cast<const char*>(&floatVal), sizeof(floatVal));
+            }
+            break;
+            
+        case '%': // bool (1バイト)
+            elementSize = 1;
+            fileOffset = (windowOffset + index) * elementSize;
+            file.seekp(fileOffset);
+            {
+                uint8_t boolVal = std::get<bool>(value) ? 1 : 0;
+                file.write(reinterpret_cast<const char*>(&boolVal), sizeof(boolVal));
+            }
+            break;
+            
+        case '@': // string (UTF-8可変長)
+            elementSize = 1;
+            fileOffset = windowOffset + index;
+            file.seekp(fileOffset);
+            {
+                std::string strVal = std::get<std::string>(value);
+                if (!strVal.empty()) {
+                    file.write(&strVal[0], 1);
+                } 
+                else {
+                    char nullChar = '\0';
+                    file.write(&nullChar, 1);
+                }
+            }
+            break;
+            
+        default:
+            throw std::runtime_error("Unknown memory map type: " + std::string(1, mapType));
+    }
+    
+    file.flush();
+}
+
+// ウィンドウスライド
+void MemoryMap::slideWindow(int offset) {
+    int newOffset = static_cast<int>(windowOffset) + offset;
+    
+    // 0未満にならないようにクランプ
+    if (newOffset < 0) {
+        windowOffset = 0;
+    } else {
+        windowOffset = static_cast<size_t>(newOffset);
+    }
+}
+
 
 // メモリ参照を解決する
 Value Interpreter::resolveMemoryRef(const std::string& ref) {
@@ -152,6 +341,12 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateFileInputStatement(node);
         case NodeType::FileOutputStatement:
             return evaluateFileOutputStatement(node);
+        case NodeType::StackOperation:
+            return evaluateStackOperation(node);
+        case NodeType::MemoryMapRef:
+            return evaluateMemoryMapRef(node);
+        case NodeType::MapWindowSlide:
+            return evaluateMapWindowSlide(node);
         default:
             throw std::runtime_error("Unknown node type: " + std::to_string(static_cast<int>(node->type)));
     }
@@ -190,10 +385,40 @@ Value Interpreter::evaluateAssignment(const std::shared_ptr<ASTNode>& node) {
     std::string varName = node->children[0]->value;
     Value value = evaluateNode(node->children[1]);
 
-    int startPos = (varName[0] == '$') ? 1 : 0;
-
-    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), value);
-    return value;
+    // メモリマップ参照かチェック
+    if (varName.size() >= 3 && varName.substr(0, 2) == "$^") {
+        char mapType = varName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        
+        if (!memMap.isMapped()) {
+            throw std::runtime_error("Memory map not initialized for assignment: " + varName);
+        }
+        
+        // インデックス取得
+        size_t index = 0;
+        if (varName.size() > 3) {
+            index = std::stoi(varName.substr(3));
+        }
+        
+        // string型の特殊処理
+        if (mapType == '@' && std::holds_alternative<std::string>(value)) {
+            std::string strValue = std::get<std::string>(value);
+            // 文字列を1文字ずつ連続配置
+            for (size_t i = 0; i < strValue.size() && (index + i) < MEMORY_MAP_SIZE; ++i) {
+                memMap.writeElement(index + i, std::string(1, strValue[i]));
+            }
+        } 
+        else {
+            memMap.writeElement(index, value);
+        }
+        
+        return value;
+    } else {
+        // 通常のメモリ参照への代入
+        int startPos = (varName[0] == '$') ? 1 : 0;
+        setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), value);
+        return value;
+    }
 }
 
 // 算術式ノード評価
@@ -542,31 +767,110 @@ Value Interpreter::evaluateOutputStatement(const std::shared_ptr<ASTNode>& node)
 // ファイル入力文ノード評価
 Value Interpreter::evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
-    std::string varName = node->children[1]->value;
+    std::string targetName = node->children[1]->value;
 
-    std::ifstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
+    // メモリマップ参照かチェック
+    if (targetName.size() >= 3 && targetName.substr(0, 2) == "$^") {
+        // メモリマップにファイルをマッピング
+        char mapType = targetName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        memMap.mapFile(filename, mapType);
+        return Value();
+    } else {
+        // 通常のメモリ参照への読み込み
+        std::ifstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        
+        int startPos = (targetName[0] == '$') ? 1 : 0;
+        setMemoryValue(targetName[startPos], evaluateMemoryIndex(targetName), content);
+        return Value();
     }
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    
-    int startPos = (varName[0] == '$') ? 1 : 0;
-    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), content);
-    return Value();
 }
 
 // ファイル出力文ノード評価
 Value Interpreter::evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string filename = std::get<std::string>(evaluateNode(node->children[0]));
-    Value value = evaluateNode(node->children[1]);
+    std::string sourceName = node->children[1]->value;
 
-    std::ofstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
+    // メモリマップ参照かチェック
+    if (sourceName.size() >= 3 && sourceName.substr(0, 2) == "$^") {
+        // メモリマップからファイルに書き出し
+        char mapType = sourceName[2];
+        MemoryMap& memMap = getMemoryMap(mapType);
+        
+        if (!memMap.isMapped()) {
+            throw std::runtime_error("Memory map not initialized for output");
+        }
+        
+        return Value();
+    } 
+    else {
+        // 通常のメモリ参照からファイルへの出力
+        Value value = evaluateNode(node->children[1]);
+
+        std::ofstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+        
+        file << valueToString(value);
+        return Value();
     }
-    
-    file << valueToString(value);
-    return Value();
+}
+
+// スタック操作ノード評価
+Value Interpreter::evaluateStackOperation(const std::shared_ptr<ASTNode>& node) {
+    std::string op = node->value;
+    Value val = evaluateNode(node->children[0]);
+
+    if (op == "IntegerStackPush") {
+        if (intStack.size() >= 1024) throw std::runtime_error("Integer stack overflow");
+        intStack.push_back(std::get<int>(val));
+        return Value();
+    }
+    if (op == "IntegerStackPop") {
+        if (intStack.empty()) throw std::runtime_error("Integer stack underflow");
+        int result = intStack.back();
+        intStack.pop_back();
+        return result;
+    }
+    if (op == "FloatStackPush") {
+        if (floatStack.size() >= 1024) throw std::runtime_error("Float stack overflow");
+        floatStack.push_back(std::get<double>(val));
+        return Value();
+    }
+    if (op == "FloatStackPop") {
+        if (floatStack.empty()) throw std::runtime_error("Float stack underflow");
+        double result = floatStack.back();
+        floatStack.pop_back();
+        return result;
+    }
+    if (op == "StringStackPush") {
+        if (stringStack.size() >= 1024) throw std::runtime_error("String stack overflow");
+        stringStack.push_back(std::get<std::string>(val));
+        return Value();
+    }
+    if (op == "StringStackPop") {
+        if (stringStack.empty()) throw std::runtime_error("String stack underflow");
+        std::string result = stringStack.back();
+        stringStack.pop_back();
+        return result;
+    }
+    if (op == "BooleanStackPush") {
+        if (booleanStack.size() >= 1024) throw std::runtime_error("Boolean stack overflow");
+        booleanStack.push_back(std::get<bool>(val));
+        return Value();
+    }
+    if (op == "BooleanStackPop") {
+        if (booleanStack.empty()) throw std::runtime_error("Boolean stack underflow");
+        bool result = booleanStack.back();
+        booleanStack.pop_back();
+        return result;
+    }
+    throw std::runtime_error("Unknown stack operation: " + op);
 }
 
 // メモリ参照ノード評価
@@ -574,11 +878,73 @@ Value Interpreter::evaluateMemoryRef(const std::shared_ptr<ASTNode>& node) {
     return resolveMemoryRef(node->value);
 }
 
+// 数値ノード評価
 Value Interpreter::evaluateNumber(const std::shared_ptr<ASTNode>& node) {
     return std::stoi(node->value);
 }
 
+// 文字列ノード評価
 Value Interpreter::evaluateString(const std::shared_ptr<ASTNode>& node) {
     return node->value;
 }
 
+// メモリマップ参照ノード評価
+Value Interpreter::evaluateMemoryMapRef(const std::shared_ptr<ASTNode>& node) {
+    std::string mapRef = node->value;
+    if (mapRef.size() < 3 || mapRef.substr(0, 2) != "$^") {
+        throw std::runtime_error("Invalid memory map reference: " + mapRef);
+    }
+    
+    char mapType = mapRef[2];
+    MemoryMap& memMap = getMemoryMap(mapType);
+    
+    if (!memMap.isMapped()) {
+        throw std::runtime_error("Memory map not initialized for type: " + std::string(1, mapType));
+    }
+    
+    // インデックス取得
+    size_t index = 0;
+    if (mapRef.size() > 3) {
+        index = std::stoi(mapRef.substr(3));
+    }
+    
+    return memMap.readElement(index);
+}
+
+// マップウィンドウスライドノード評価
+Value Interpreter::evaluateMapWindowSlide(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.size() < 2) {
+        throw std::runtime_error("Map window slide missing arguments");
+    }
+    
+    // スライド量を取得
+    Value slideAmountValue = evaluateNode(node->children[0]);
+    int slideAmount = std::get<int>(slideAmountValue);
+    
+    // メモリマップ参照を取得
+    std::string mapRefStr = node->children[1]->value;
+    if (mapRefStr.size() < 3 || mapRefStr.substr(0, 2) != "$^") {
+        throw std::runtime_error("Invalid memory map reference in slide: " + mapRefStr);
+    }
+    
+    char mapType = mapRefStr[2];
+    MemoryMap& memMap = getMemoryMap(mapType);
+    
+    if (!memMap.isMapped()) {
+        throw std::runtime_error("Memory map not initialized for slide operation");
+    }
+    
+    memMap.slideWindow(slideAmount);
+    return Value();
+}
+
+// メモリマップの取得
+MemoryMap& Interpreter::getMemoryMap(char type) {
+    switch (type) {
+        case '#': return intMemoryMap;
+        case '@': return stringMemoryMap;
+        case '~': return floatMemoryMap;
+        case '%': return boolMemoryMap;
+        default: throw std::runtime_error("Unknown memory map type: " + std::string(1, type));
+    }
+}

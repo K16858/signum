@@ -31,11 +31,20 @@ private:
     // メモリ参照の型情報を記録
     std::unordered_map<std::string, MemoryType> memoryTypes;
     
+    // メモリマップ参照の型情報を記録
+    std::unordered_map<std::string, MemoryType> memoryMapTypes;
+    
     // 関数の定義情報を記録
     std::unordered_map<std::string, FunctionInfo> functions;
     
     // エラーメッセージを保存
     std::vector<std::string> errors;
+
+    // スタックカウント
+    size_t intStackSize = 0;
+    size_t floatStackSize = 0;
+    size_t stringStackSize = 0;
+    size_t booleanStackSize = 0;
 
 public:
     // コンストラクタ
@@ -57,6 +66,9 @@ private:
     // メモリ参照のチェック
     MemoryType checkMemoryRef(const ASTNode* node);
     
+    // メモリマップ参照のチェック
+    MemoryType checkMemoryMapRef(const ASTNode* node);
+    
     // 式のチェック
     MemoryType checkExpression(const ASTNode* node);
     
@@ -74,6 +86,12 @@ private:
 
     // ファイル入出力のチェック
     void checkFileInputOutput(const ASTNode* node);
+
+    // スタック操作のチェック
+    MemoryType checkStackOperation(const ASTNode* node);
+
+    // マップウィンドウスライドのチェック
+    MemoryType checkMapWindowSlide(const ASTNode* node);
     
     // エラー報告
     void reportError(const std::string& message);

@@ -5,30 +5,33 @@
 // ノード型を文字列に変換する関数
 std::string nodeType2String(NodeType type) {
     switch (type) {
-        case NodeType::Program: return "ルート";
-        case NodeType::Function: return "関数定義";
-        case NodeType::FunctionCall: return "関数呼び出し";
-        case NodeType::Statement: return "ステートメント";
-        case NodeType::ArithmeticExpression: return "四則演算式";
-        case NodeType::LogicalExpression: return "論理式";
-        case NodeType::Factor: return "因子";
-        case NodeType::MemoryRef: return "メモリ参照";
-        case NodeType::Number: return "数値";
-        case NodeType::String: return "文字列";
-        case NodeType::Symbol: return "シンボル";
-        case NodeType::Operator: return "演算子";
-        case NodeType::Comparison: return "比較演算式";
-        case NodeType::Condition: return "条件式";
-        case NodeType::Cast: return "型変換";
-        case NodeType::IfStatement: return "条件分岐";
-        case NodeType::LoopStatement: return "ループ";
-        case NodeType::Assignment: return "代入";
-        case NodeType::InputStatement: return "入力文";
-        case NodeType::OutputStatement: return "出力文";
-        case NodeType::FileInputStatement: return "ファイル入力文";
-        case NodeType::FileOutputStatement: return "ファイル出力文";
-        case NodeType::Error: return "エラー";
-        default: return "不明";
+        case NodeType::Program: return "ProgramRoot";
+        case NodeType::Function: return "Function";
+        case NodeType::FunctionCall: return "FunctionCall";
+        case NodeType::Statement: return "Statement";
+        case NodeType::ArithmeticExpression: return "AritmeticExpression";
+        case NodeType::LogicalExpression: return "LogicalExpression";
+        case NodeType::Factor: return "Factor";
+        case NodeType::MemoryRef: return "MemoryRef";
+        case NodeType::Number: return "Number";
+        case NodeType::String: return "String";
+        case NodeType::Symbol: return "Symbol";
+        case NodeType::Operator: return "Operator";
+        case NodeType::Comparison: return "Comparison";
+        case NodeType::Condition: return "Condition";
+        case NodeType::Cast: return "Cast";
+        case NodeType::IfStatement: return "IfStatement";
+        case NodeType::LoopStatement: return "LoopStatement";
+        case NodeType::Assignment: return "Assignment";
+        case NodeType::InputStatement: return "InputStatement";
+        case NodeType::OutputStatement: return "OutputStatement";
+        case NodeType::FileInputStatement: return "FileInputStatement";
+        case NodeType::FileOutputStatement: return "FileOutputStatement";
+        case NodeType::StackOperation: return "StackOperation";
+        case NodeType::MemoryMapRef: return "MemoryMapRef";
+        case NodeType::MapWindowSlide: return "MapWindowSlide";
+        case NodeType::Error: return "Error";
+        default: return "Unknown";
     }
 }
 
@@ -39,7 +42,7 @@ ASTNode::ASTNode(NodeType type, const std::string& value)
 // デバッグ用表示メソッド
 void ASTNode::print(int indent) const {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "ノード: " << nodeType2String(type) << ", 値: " << value << std::endl;
+    std::cout << "Node: " << nodeType2String(type) << ", Value: " << value << std::endl;
     
     for (const auto& child : children) {
         child->print(indent + 1);

@@ -22,8 +22,6 @@ std::shared_ptr<ASTNode> Parser::parseProgram() {
 // ステートメントの解析
 std::shared_ptr<ASTNode> Parser::parseStatement() {
     if (pos >= tokens.size()) {
-        // reportError("Error: Unexpected end of input");
-        // return nullptr;
         return recoverFromError("Error: Unexpected end of input");
     }
     
@@ -80,12 +78,56 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
                 else if (nextType == TokenType::DoubleRAngleBracket) {
                     return parseFileInputStatement();
                 }
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance();
+                    }
+                    return expr;
+                }
             }
             else {
-                // reportError("Error: Unexpected end of input after string token");
-                // return nullptr;
                 return recoverFromError("Error: Unexpected end of input after string token");
             }
+        }
+
+        // メモリマップ参照
+        case TokenType::MemoryMapRef: {
+            if (pos + 1 < tokens.size()) {
+                TokenType nextType = tokens[pos+1].type;
+                
+                // 代入系演算子
+                if (nextType == TokenType::Assign || 
+                    nextType == TokenType::PlusEqual || 
+                    nextType == TokenType::MinusEqual ||
+                    nextType == TokenType::MultiplyEqual ||
+                    nextType == TokenType::DivideEqual ||
+                    nextType == TokenType::ModulusEqual) {
+                    return parseAssignment();
+                }
+                // ファイル出力（マップ→ファイル）
+                else if (nextType == TokenType::DoubleLAngleBracket) {
+                    return parseFileOutputStatement();
+                }
+                // スライド操作
+                else if (nextType == TokenType::MapWindowSlide) {
+                    return parseMapWindowSlide();
+                }
+                // 四則演算子や比較演算子の場合は式として扱う
+                else {
+                    auto expr = parseExpression();
+                    if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                        advance(); // セミコロンスキップ
+                    }
+                    return expr;
+                }
+            }
+            // 単独メモリマップ参照
+            auto ref = parseMemoryMapRef();
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return ref;
         }
 
         // 関数呼び出し
@@ -133,6 +175,21 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
         case TokenType::StrCast:
         case TokenType::BoolCast:
             return parseCast(); // 型変換の解析
+
+        // スライド操作
+        case TokenType::Integer:
+        case TokenType::Float:
+            if (pos + 1 < tokens.size() && tokens[pos+1].type == TokenType::MapWindowSlide) {
+                return parseMapWindowSlide();
+            }
+            // それ以外は通常の式として処理
+            else {
+                auto expr = parseExpression();
+                if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                    advance();
+                }
+                return expr;
+            }
             
         // その他の開始トークン（数値や文字列など）
         default:
@@ -152,9 +209,18 @@ std::shared_ptr<ASTNode> Parser::parseMemoryRef() {
         return node;
     }
 
-    // reportError("Error: Expected memory reference");
-    // return nullptr;
     return recoverFromError("Error: Expected memory reference");
+}
+
+// メモリマップ参照の解析
+std::shared_ptr<ASTNode> Parser::parseMemoryMapRef() {
+    if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto node = std::make_shared<ASTNode>(NodeType::MemoryMapRef, tokens[pos].value);
+        advance();
+        return node;
+    }
+
+    return recoverFromError("Error: Expected memory map reference");
 }
 
 // 加減算式の解析
@@ -199,58 +265,95 @@ std::shared_ptr<ASTNode> Parser::parseTerm() {
 std::shared_ptr<ASTNode> Parser::parseFactor() {
     debugLog("因子を解析中...");
 
+    std::shared_ptr<ASTNode> node;
+
     if (tokens[pos].type == TokenType::Integer || tokens[pos].type == TokenType::Float) {
         debugLog("数値を解析中...");
-        auto node = std::make_shared<ASTNode>(NodeType::Number, tokens[pos].value);
+        node = std::make_shared<ASTNode>(NodeType::Number, tokens[pos].value);
         advance();
-        return node;
     } 
     else if (tokens[pos].type == TokenType::String) {
         debugLog("文字列を解析中...");
-        auto node = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
+        node = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance();
-        return node;
     } 
     else if (tokens[pos].type == TokenType::MemoryRef) {
-        auto node = parseMemoryRef();
-        return node;
+        node = parseMemoryRef();
+    } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        node = parseMemoryMapRef();
     } 
     else if (tokens[pos].type == TokenType::LParen) {
         debugLog("括弧を解析中...");
         advance(); // "("
-        auto node = parseExpression(); // 括弧内の式を解析
+        node = parseExpression(); // 括弧内の式を解析
         if (tokens[pos].type != TokenType::RParen) {
-            // reportError("Expected ')' after expression in factor");
-            // return nullptr;
             return recoverFromError("Expected ')' after expression in factor");
         }
         advance(); // ")"
-        return node;
     } 
     else if (tokens[pos].type == TokenType::IntCast ||
         tokens[pos].type == TokenType::FloatCast ||
         tokens[pos].type == TokenType::StrCast ||
         tokens[pos].type == TokenType::BoolCast) {
         debugLog("型変換を解析中...");
-        return parseCast();
+        node = parseCast();
     }
     else {
-        // reportError("Error: Expected factor");
-        // return nullptr;
         return recoverFromError("Error: Expected factor");
     }
 
+    // スタック操作解析
+    if (pos < tokens.size() && (
+        tokens[pos].type == TokenType::IntegerStackPush ||
+        tokens[pos].type == TokenType::IntegerStackPop ||
+        tokens[pos].type == TokenType::FloatStackPush ||
+        tokens[pos].type == TokenType::FloatStackPop ||
+        tokens[pos].type == TokenType::StringStackPush ||
+        tokens[pos].type == TokenType::StringStackPop ||
+        tokens[pos].type == TokenType::BooleanStackPush ||
+        tokens[pos].type == TokenType::BooleanStackPop
+    )) {
+        debugLog("スタック操作を解析中...");
+        std::string operation;
+        if (tokens[pos].type == TokenType::IntegerStackPush) operation = "IntegerStackPush";
+        else if (tokens[pos].type == TokenType::IntegerStackPop) operation = "IntegerStackPop";
+        else if (tokens[pos].type == TokenType::FloatStackPush) operation = "FloatStackPush";
+        else if (tokens[pos].type == TokenType::FloatStackPop) operation = "FloatStackPop";
+        else if (tokens[pos].type == TokenType::StringStackPush) operation = "StringStackPush";
+        else if (tokens[pos].type == TokenType::StringStackPop) operation = "StringStackPop";
+        else if (tokens[pos].type == TokenType::BooleanStackPush) operation = "BooleanStackPush";
+        else if (tokens[pos].type == TokenType::BooleanStackPop) operation = "BooleanStackPop";
+
+        advance(); // スタック操作をスキップ
+
+        auto stackNode = std::make_shared<ASTNode>(NodeType::StackOperation, operation);
+        stackNode->children.push_back(node);
+        node = stackNode;
+    }
+
+    return node;
 }
 
 // 代入文と複合代入の解析
 std::shared_ptr<ASTNode> Parser::parseAssignment() {
     debugLog("代入文を解析中...");
     
-    auto left = parseMemoryRef(); // 左辺のメモリ参照
+    std::shared_ptr<ASTNode> left;
+    
+    // メモリ参照かメモリマップ参照かを判定
+    if (tokens[pos].type == TokenType::MemoryRef) {
+        left = parseMemoryRef();
+    } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        left = parseMemoryMapRef();
+    } 
+    else {
+        return recoverFromError("Error: Expected memory reference or memory map reference on left side of assignment");
+    }
+    
     if (!left) {
-        // reportError("Error: Expected memory reference on left side of assignment");
-        // return nullptr;
-        return recoverFromError("Error: Expected memory reference on left side of assignment");
+        return recoverFromError("Error: Expected memory reference or memory map reference on left side of assignment");
     }
 
     // 演算子タイプを確認
@@ -290,8 +393,6 @@ std::shared_ptr<ASTNode> Parser::parseAssignment() {
             actualOp = "%";
         }
         else {
-            // reportError("Error: Unknown compound assignment operator");
-            // return nullptr;
             return recoverFromError("Error: Unknown compound assignment operator");
         }
 
@@ -378,15 +479,11 @@ std::shared_ptr<ASTNode> Parser::parseIfStatement() {
         node->children.push_back(parseCondition()); // 条件式
 
         if (tokens[pos].type != TokenType::RParen) {
-            // reportError("Expected ')' after condition in if statement");
-            // return nullptr;
             return recoverFromError("Expected ')' after condition in if statement");
         } 
         advance(); // ")"
     } 
     else {
-        // reportError("Expected '(' after 'if'");
-        // return nullptr;
         return recoverFromError("Expected '(' after 'if'");
     }
 
@@ -399,8 +496,6 @@ std::shared_ptr<ASTNode> Parser::parseIfStatement() {
         }
 
         if (tokens[pos].type != TokenType::RBrace) {
-            // reportError("Expected '}' after then block in if statement");
-            // return nullptr;
             return recoverFromError("Expected '}' after then block in if statement");
         }
         advance(); // "}"
@@ -426,8 +521,6 @@ std::shared_ptr<ASTNode> Parser::parseIfStatement() {
                 }
 
                 if (tokens[pos].type != TokenType::RBrace) {
-                    // reportError("Expected '}' after else block in if statement");
-                    // return nullptr;
                     return recoverFromError("Expected '}' after else block in if statement");
                 }
                 advance(); // "}"
@@ -435,15 +528,11 @@ std::shared_ptr<ASTNode> Parser::parseIfStatement() {
                 node->children.push_back(std::move(elseNode)); // elseを追加
             } 
             else {
-                // reportError("Expected '{' or 'if' after 'else' in if statement");
-                // return nullptr;
                 return recoverFromError("Expected '{' or 'if' after 'else' in if statement");
             }
         }
     }
     else {
-        // reportError("Expected '{' after condition in if statement");
-        // return nullptr;
         return recoverFromError("Expected '{' after condition in if statement");
     }
 
@@ -462,15 +551,11 @@ std::shared_ptr<ASTNode> Parser::parseLoopStatement() {
         node->children.push_back(parseCondition()); // 条件式
 
         if (tokens[pos].type != TokenType::RParen) {
-            // reportError("Expected ')' after condition in loop statement");
-            // return nullptr;
             return recoverFromError("Expected ')' after condition in loop statement");
         } 
         advance(); // ")"
     } 
     else {
-        // reportError("Expected '(' after 'loop'");
-        // return nullptr;
         return recoverFromError("Expected '(' after 'loop'");
     }
     
@@ -483,8 +568,6 @@ std::shared_ptr<ASTNode> Parser::parseLoopStatement() {
         }
 
         if (tokens[pos].type != TokenType::RBrace) {
-            // reportError("Expected '}' after loop block");
-            // return nullptr;
             return recoverFromError("Expected '}' after loop block");
         }
         advance(); // "}"
@@ -492,8 +575,6 @@ std::shared_ptr<ASTNode> Parser::parseLoopStatement() {
         node->children.push_back(std::move(loopNode)); // ループ本体を追加
     } 
     else {
-        // reportError("Expected '{' after loop condition");
-        // return nullptr;
         return recoverFromError("Expected '{' after loop condition");
     }
 
@@ -510,8 +591,6 @@ std::shared_ptr<ASTNode> Parser::parseOutputStatement() {
     if (tokens[pos].type == TokenType::MemoryRef) {
         auto ref = parseMemoryRef();
         if (!ref) {
-            // reportError("Expected memory reference in output statement");
-            // return nullptr;
             return recoverFromError("Expected memory reference in output statement");
         }
         node->children.push_back(std::move(ref));
@@ -524,16 +603,12 @@ std::shared_ptr<ASTNode> Parser::parseOutputStatement() {
     else {
         auto expr = parseExpression();
         if (!expr) {
-            // reportError("Expected expression in output statement");
-            // return nullptr;
             return recoverFromError("Expected expression in output statement");
         }
         node->children.push_back(std::move(expr));
     }
     
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after output statement");
-        // return nullptr;
         return recoverFromError("Expected ';' after output statement");
     }
     advance(); // セミコロンをスキップ
@@ -551,21 +626,15 @@ std::shared_ptr<ASTNode> Parser::parseInputStatement() {
     if (tokens[pos].type == TokenType::MemoryRef) {
         auto ref = parseMemoryRef();
         if (!ref) {
-            // reportError("Expected memory reference in input statement");
-            // return nullptr;
             return recoverFromError("Expected memory reference in input statement");
         }
         node->children.push_back(std::move(ref));
     } 
     else {
-        // reportError("Expected memory reference in input statement");
-        // return nullptr;
         return recoverFromError("Expected memory reference in input statement");
     }
     
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after input statement");
-        // return nullptr;
         return recoverFromError("Expected ';' after input statement");
     }
     advance(); // セミコロンをスキップ
@@ -583,24 +652,20 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
         auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance(); // 文字列をスキップ
         node->children.push_back(std::move(fileNode));
-    } else if (tokens[pos].type == TokenType::MemoryRef) {
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
         auto fileNode = parseMemoryRef();
         if (!fileNode) {
-            // reportError("Expected memory reference for file name");
-            // return nullptr;
             return recoverFromError("Expected memory reference for file name");
         }
         node->children.push_back(std::move(fileNode));
-    } else {
-        // reportError("Expected string or memory reference for file name");
-        // return nullptr;
+    } 
+    else {
         return recoverFromError("Expected string or memory reference for file name");
     }
     
     // "<<"" をチェック
     if (tokens[pos].type != TokenType::DoubleLAngleBracket) {
-        // reportError("Expected '<<' after file name in file output statement");
-        // return nullptr;
         return recoverFromError("Expected '<<' after file name in file output statement");
     }
     advance(); // "<<"
@@ -609,9 +674,14 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
     if (tokens[pos].type == TokenType::MemoryRef) {
         auto ref = parseMemoryRef();
         if (!ref) {
-            // reportError("Expected memory reference in file output statement");
-            // return nullptr;
             return recoverFromError("Expected memory reference in file output statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto ref = parseMemoryMapRef();
+        if (!ref) {
+            return recoverFromError("Expected memory map reference in file output statement");
         }
         node->children.push_back(std::move(ref));
     } 
@@ -623,16 +693,12 @@ std::shared_ptr<ASTNode> Parser::parseFileOutputStatement() {
     else {
         auto expr = parseExpression();
         if (!expr) {
-            // reportError("Expected expression in file output statement");
-            // return nullptr;
             return recoverFromError("Expected expression in file output statement");
         }
         node->children.push_back(std::move(expr));
     }
     
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after file output statement");
-        // return nullptr;
         return recoverFromError("Expected ';' after file output statement");
     }
     advance(); // セミコロンをスキップ
@@ -650,24 +716,20 @@ std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
         auto fileNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
         advance(); // 文字列をスキップ
         node->children.push_back(std::move(fileNode));
-    } else if (tokens[pos].type == TokenType::MemoryRef) {
+    } 
+    else if (tokens[pos].type == TokenType::MemoryRef) {
         auto fileNode = parseMemoryRef();
         if (!fileNode) {
-            // reportError("Expected memory reference for file name");
-            // return nullptr;
             return recoverFromError("Expected memory reference for file name");
         }
         node->children.push_back(std::move(fileNode));
-    } else {
-        // reportError("Expected string or memory reference for file name");
-        // return nullptr;
+    } 
+    else {
         return recoverFromError("Expected string or memory reference for file name");
     }
     
     // ">>" をチェック
     if (tokens[pos].type != TokenType::DoubleRAngleBracket) {
-        // reportError("Expected '>>' after file name in file input statement");
-        // return nullptr;
         return recoverFromError("Expected '>>' after file name in file input statement");
     }
     advance(); // ">>"
@@ -676,21 +738,22 @@ std::shared_ptr<ASTNode> Parser::parseFileInputStatement() {
     if (tokens[pos].type == TokenType::MemoryRef) {
         auto ref = parseMemoryRef();
         if (!ref) {
-            // reportError("Expected memory reference in file input statement");
-            // return nullptr;
             return recoverFromError("Expected memory reference in file input statement");
         }
         node->children.push_back(std::move(ref));
     } 
+    else if (tokens[pos].type == TokenType::MemoryMapRef) {
+        auto ref = parseMemoryMapRef();
+        if (!ref) {
+            return recoverFromError("Expected memory map reference in file input statement");
+        }
+        node->children.push_back(std::move(ref));
+    } 
     else {
-        // reportError("Expected memory reference in file input statement");
-        // return nullptr;
-        return recoverFromError("Expected memory reference in file input statement");
+        return recoverFromError("Expected memory reference or memory map reference in file input statement");
     }
     
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after file input statement");
-        // return nullptr;
         return recoverFromError("Expected ';' after file input statement");
     }
     advance(); // セミコロンをスキップ
@@ -709,8 +772,6 @@ std::shared_ptr<ASTNode> Parser::parseFunction() {
         functionNumber = tokenValue.substr(1);
     } 
     else {
-        // reportError("Invalid function call format. Expected $_XXX where X is a digit.");
-        // return nullptr;
         return recoverFromError("Invalid function call format. Expected $_XXX where X is a digit.");
     }
     
@@ -719,8 +780,6 @@ std::shared_ptr<ASTNode> Parser::parseFunction() {
         !std::isdigit(functionNumber[0]) || 
         !std::isdigit(functionNumber[1]) || 
         !std::isdigit(functionNumber[2])) {
-        // reportError("Invalid function number format. Expected $_XXX where X is a digit.");
-        // return nullptr;
         return recoverFromError("Invalid function number format. Expected $_XXX where X is a digit.");
     }
     
@@ -728,8 +787,6 @@ std::shared_ptr<ASTNode> Parser::parseFunction() {
     advance(); // 関数定義トークンをスキップ
 
     if (tokens[pos].type != TokenType::LBrace) {
-        // reportError("Expected '{' after function definition");
-        // return nullptr;
         return recoverFromError("Expected '{' after function definition");
     }
     advance(); // "{"
@@ -739,8 +796,6 @@ std::shared_ptr<ASTNode> Parser::parseFunction() {
     }
 
     if (tokens[pos].type != TokenType::RBrace) {
-        // reportError("Expected '}' after function body");
-        // return nullptr;
         return recoverFromError("Expected '}' after function body");
     }
     advance(); // "}"
@@ -760,8 +815,6 @@ std::shared_ptr<ASTNode> Parser::parseFunctionCall() {
         functionNumber = tokenValue.substr(2);
     } 
     else {
-        // reportError("Invalid function call format. Expected $_XXX where X is a digit.");
-        // return nullptr;
         return recoverFromError("Invalid function call format. Expected $_XXX where X is a digit.");
     }
     
@@ -770,8 +823,6 @@ std::shared_ptr<ASTNode> Parser::parseFunctionCall() {
         !std::isdigit(functionNumber[0]) || 
         !std::isdigit(functionNumber[1]) || 
         !std::isdigit(functionNumber[2])) {
-        // reportError("Invalid function number format. Expected $_XXX where X is a digit.");
-        // return nullptr;
         return recoverFromError("Invalid function number format. Expected $_XXX where X is a digit.");
     }
     
@@ -780,8 +831,6 @@ std::shared_ptr<ASTNode> Parser::parseFunctionCall() {
     
     // セミコロンチェック
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after function call");
-        // return nullptr;
         return recoverFromError("Expected ';' after function call");
     }
     advance(); // セミコロンをスキップ
@@ -800,8 +849,6 @@ std::shared_ptr<ASTNode> Parser::parseCast() {
     else if (tokens[pos].type == TokenType::StrCast) castType = "string";
     else if (tokens[pos].type == TokenType::BoolCast) castType = "bool";
     else {
-        // reportError("Expected cast type (int, float, string, bool)");
-        // return nullptr;
         return recoverFromError("Expected cast type (int, float, string, bool)");
     }
     
@@ -811,20 +858,81 @@ std::shared_ptr<ASTNode> Parser::parseCast() {
     // キャストする対象の式
     auto expr = parseExpression();
     if (!expr) {
-        // reportError("Expected expression for cast");
-        // return nullptr;
         return recoverFromError("Expected expression for cast");
     }
     node->children.push_back(std::move(expr));
     
     // セミコロンチェック
     if (tokens[pos].type != TokenType::Semicolon) {
-        // reportError("Expected ';' after cast expression");
-        // return nullptr;
         return recoverFromError("Expected ';' after cast expression");
     }
     advance(); // セミコロンをスキップ
 
+    return node;
+}
+
+std::shared_ptr<ASTNode> Parser::parseStackOperation() {
+    debugLog("スタック操作を解析中...");
+
+    std::string operation;
+    if (tokens[pos].type == TokenType::IntegerStackPush) operation = "IntegerStackPush";
+    else if (tokens[pos].type == TokenType::IntegerStackPop) operation = "IntegerStackPop";
+    else if (tokens[pos].type == TokenType::FloatStackPush) operation = "FloatStackPush";
+    else if (tokens[pos].type == TokenType::FloatStackPop) operation = "FloatStackPop";
+    else if (tokens[pos].type == TokenType::StringStackPush) operation = "StringStackPush";
+    else if (tokens[pos].type == TokenType::StringStackPop) operation = "StringStackPop";
+    else if (tokens[pos].type == TokenType::BooleanStackPush) operation = "BooleanStackPush";
+    else if (tokens[pos].type == TokenType::BooleanStackPop) operation = "BooleanStackPop";
+    else {
+        return recoverFromError("Expected stack operation");
+    }
+
+    advance(); // スタック操作トークンをスキップ
+
+    auto node = std::make_shared<ASTNode>(NodeType::StackOperation, operation);
+    node->children.push_back(parseExpression());
+
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        return recoverFromError("Expected ';' after stack operation");
+    }
+    advance(); // セミコロンをスキップ
+
+    return node;
+}
+
+// メモリマップウィンドウスライドの解析
+std::shared_ptr<ASTNode> Parser::parseMapWindowSlide() {
+    debugLog("メモリマップウィンドウスライドステートメントを解析中...");
+
+    // スライド量を解析
+    auto slideAmount = parseExpression();
+    if (!slideAmount) {
+        return recoverFromError("Expected slide amount expression");
+    }
+    
+    // スライド演算子をチェック
+    if (tokens[pos].type != TokenType::MapWindowSlide) {
+        return recoverFromError("Expected '+>' slide operator");
+    }
+    advance();
+    
+    // メモリマップ参照を解析
+    auto mapRef = parseMemoryMapRef();
+    if (!mapRef) {
+        return recoverFromError("Expected memory map reference in slide statement");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::MapWindowSlide, "+>");
+    node->children.push_back(std::move(slideAmount));
+    node->children.push_back(std::move(mapRef));
+    
+    // セミコロンチェック
+    if (tokens[pos].type != TokenType::Semicolon) {
+        return recoverFromError("Expected ';' after map slide statement");
+    }
+    advance(); // セミコロンをスキップ
+    
     return node;
 }
 

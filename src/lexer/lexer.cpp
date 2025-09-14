@@ -5,22 +5,46 @@
 #include <string>
 #include <vector>
 
-// メモリ参照を解析
-std::string parseMemoryRef(const std::string& src, size_t& pos) {
-    std::string memref = "";
-    memref += src[pos++]; // "$"
+// エラー箇所の周辺コンテキストを取得
+std::string Lexer::getContextAroundPosition() const {
+    const size_t contextRange = 20; // 前後20文字
+    size_t start = (pos > contextRange) ? pos - contextRange : 0;
+    size_t end = (pos + contextRange < source.size()) ? pos + contextRange : source.size();
     
-    while (pos < src.size() && (src[pos] == '#' || src[pos] == '@' || src[pos] == '~' || src[pos] == '%')) {
-        memref += src[pos++]; // 型記号
-        
+    std::string context = source.substr(start, end - start);
+    // 改行を表示用に変換
+    for (char& c : context) {
+        if (c == '\n') c = ' ';
+        if (c == '\t') c = ' ';
+    }
+    return context;
+}
+
+// メモリ参照を解析
+std::string Lexer::parseMemoryRef() {
+    std::string memref = "";
+    memref += source[pos++]; // "$"
+    
+    while (pos < source.size() && (source[pos] == '#' || source[pos] == '@' || source[pos] == '~' || source[pos] == '%' || source[pos] == '^')) {
+        memref += source[pos++]; // 型記号
+        column++;
+
+        if (memref.back() == '^' && pos < source.size()) {
+            if (source[pos] == '#' || source[pos] == '@' || source[pos] == '~' || source[pos] == '%') {
+                memref += source[pos++]; // マップ型記号
+                column++;
+            }
+        }
+            
         // ネストされた参照の場合
-        if (pos < src.size() && src[pos] == '$') {
-            memref += parseMemoryRef(src, pos); // 再帰
+        if (pos < source.size() && source[pos] == '$') {
+            memref += parseMemoryRef(); // 再帰
         } 
         // 通常の数字の場合
         else {
-            while (pos < src.size() && isdigit(src[pos])) {
-                memref += src[pos++];
+            while (pos < source.size() && isdigit(source[pos])) {
+                memref += source[pos++];
+                column++;
             }
         }
     }
@@ -29,70 +53,81 @@ std::string parseMemoryRef(const std::string& src, size_t& pos) {
 }
 
 // 字句解析関数
-std::vector<Token> tokenize(const std::string& src) {
+std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
-    size_t pos = 0; // 解析位置
-    size_t line = 1; // 行番号
 
-    while (pos < src.size()) {
-        char c = src[pos];
+    while (pos < source.size()) {
+        char c = source[pos];
 
         // 改行を検出
         if (c == '\n') {
             ++line;
+            column = 1;
             ++pos;
             continue;
         }
         // 空白をスキップ
         if (isspace(c)) {
             ++pos;
+            ++column;
             continue;
         }
 
         // 文字列リテラル
         if (c == '"') {
             size_t start = ++pos;
-            while (pos < src.size() && src[pos] != '"') {
+            ++column;
+            while (pos < source.size() && source[pos] != '"') {
                 ++pos;
+                ++column;
             }
-            if (pos < src.size()) {
-                tokens.push_back({TokenType::String, src.substr(start, pos - start), line});
+            if (pos < source.size()) {
+                tokens.push_back({TokenType::String, source.substr(start, pos - start), line});
                 ++pos; // '"' をスキップ
+                ++column;
             } 
             else {
-                std::cerr << "Error: Unmatched double quote\n";
-                return {};
+                addError("Unmatched double quote", getContextAroundPosition());
+                return tokens;
             }
             continue;
         }
 
         // 関数呼び出し
-        if (src[pos] == '$' && pos + 1 < src.size() && src[pos + 1] == '_') {
+        if (source[pos] == '$' && pos + 1 < source.size() && source[pos + 1] == '_') {
             std::string funcCall;
-            funcCall += src[pos++]; // '$'
-            funcCall += src[pos++]; // '_'
-            while (pos < src.size() && isdigit(src[pos])) {
-                funcCall += src[pos++];
+            funcCall += source[pos++]; // '$'
+            funcCall += source[pos++]; // '_'
+            column += 2;
+            while (pos < source.size() && isdigit(source[pos])) {
+                funcCall += source[pos++];
+                ++column;
             }
             tokens.push_back({TokenType::FunctionCall, funcCall, line});
             continue;
         }
 
         // メモリ参照
-        if (src[pos] == '$') {
-            size_t startPos = pos;
-            std::string memref = parseMemoryRef(src, pos);
-            tokens.push_back({TokenType::MemoryRef, memref, line});
+        if (source[pos] == '$') {
+            if (source[pos+1] == '^') {
+                std::string memref = parseMemoryRef();
+                tokens.push_back({TokenType::MemoryMapRef, memref, line});
+            }
+            else {
+                std::string memref = parseMemoryRef();
+                tokens.push_back({TokenType::MemoryRef, memref, line});
+            }
             continue;
         }
 
         // 関数割り当て
-        // 関数IDは '_' で始まり、次に数字が続く（少なくとも3文字続く）
-        if (src[pos] == '_' && pos + 3 < src.size() && isdigit(src[pos + 1])) {
+        if (source[pos] == '_' && pos + 3 < source.size() && isdigit(source[pos + 1])) {
             std::string funcid;
-            funcid += src[pos++]; // '_'
-            while (pos < src.size() && isdigit(src[pos])) {
-                funcid += src[pos++];
+            funcid += source[pos++]; // '_'
+            ++column;
+            while (pos < source.size() && isdigit(source[pos])) {
+                funcid += source[pos++];
+                ++column;
             }
             tokens.push_back({TokenType::Function, funcid, line});
             continue;
@@ -104,29 +139,32 @@ std::vector<Token> tokenize(const std::string& src) {
             bool isFloat = false;
             
             // 整数部分を読み取り
-            while (pos < src.size() && isdigit(src[pos])) {
+            while (pos < source.size() && isdigit(source[pos])) {
                 ++pos;
+                ++column;
             }
             
             // 小数点があれば小数部分も読み取り
-            if (pos < src.size() && src[pos] == '.') {
+            if (pos < source.size() && source[pos] == '.') {
                 isFloat = true;
                 ++pos;  // 小数点
+                ++column;
                 
                 // 少なくとも1桁は必要
-                if (pos < src.size() && isdigit(src[pos])) {
-                    while (pos < src.size() && isdigit(src[pos])) {
+                if (pos < source.size() && isdigit(source[pos])) {
+                    while (pos < source.size() && isdigit(source[pos])) {
                         ++pos;
+                        ++column;
                     }
                 } 
                 else {
-                    std::cerr << "Error";
-                    return {};
+                    addError("Invalid float format: decimal point must be followed by digits", getContextAroundPosition());
+                    return tokens;
                 }
             }
             
             TokenType type = isFloat ? TokenType::Float : TokenType::Integer;
-            tokens.push_back({type, src.substr(start, pos - start), line});
+            tokens.push_back({type, source.substr(start, pos - start), line});
             continue;
         }
 
@@ -135,232 +173,328 @@ std::vector<Token> tokenize(const std::string& src) {
             case '{':
                 tokens.push_back({TokenType::LBrace, "{", line});
                 ++pos;
+                ++column;
                 break;
             case '}':
                 tokens.push_back({TokenType::RBrace, "}", line});
                 ++pos;
+                ++column;
                 break;
             case '(':
                 tokens.push_back({TokenType::LParen, "(", line});
                 ++pos;
+                ++column;
                 break;
             case ')':
                 tokens.push_back({TokenType::RParen, ")", line});
                 ++pos;
+                ++column;
                 break;
             case '[':
                 tokens.push_back({TokenType::LBracket, "[", line});
                 ++pos;
+                ++column;
                 break;
             case ']':
                 tokens.push_back({TokenType::RBracket, "]", line});
                 ++pos;
+                ++column;
                 break;
             case ',':
                 tokens.push_back({TokenType::Comma, ",", line});
                 ++pos;
+                ++column;
                 break;
             case ';':
                 tokens.push_back({TokenType::Semicolon, ";", line});
                 ++pos;
+                ++column;
                 break;
             case ':':
                 tokens.push_back({TokenType::Colon, ":", line});
                 ++pos;
+                ++column;
                 break;
             case '&':
-                if (pos + 1 < src.size()) {
-                    if (src[pos + 1] == '&') {
+                if (pos + 1 < source.size()) {
+                    if (source[pos + 1] == '&') {
                         tokens.push_back({TokenType::And, "&&", line});
                         pos += 2;
+                        column += 2;
                     }
                     else {
                         tokens.push_back({TokenType::Loop, "&", line});
-                        ++pos;  // & を処理
+                        ++pos;
+                        ++column;
                     }
                 }
                 break;
             case '?':
-                if (pos + 1 < src.size()) {
-                    if (src[pos + 1] == '?') {
+                if (pos + 1 < source.size()) {
+                    if (source[pos + 1] == '?') {
                         // ??
-                        if (pos + 2 < src.size() && src[pos + 2] == '?') {
+                        if (pos + 2 < source.size() && source[pos + 2] == '?') {
                             tokens.push_back({TokenType::Else, "???", line});
                             pos += 3;
+                            column += 3;
                         } 
                         else {
                             tokens.push_back({TokenType::ElseIf, "??", line});
                             pos += 2;
+                            column += 2;
                         }
                     } 
                     else {
                         tokens.push_back({TokenType::If, "?", line});
                         ++pos;
+                        ++column;
                     } 
                 }
                 break;
             case '<':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::LessThanOrEqual, "<=", line});
                     pos += 2;
+                    column += 2;
                 } 
-                else if (pos + 1 < src.size() && src[pos + 1] == '<') {
+                else if (pos + 1 < source.size() && source[pos + 1] == '<') {
                     tokens.push_back({TokenType::DoubleLAngleBracket, "<<", line});
                     pos += 2;
+                    column += 2;
                 } 
-                else if (pos + 1 < src.size() && src[pos + 1] == '!') {
+                else if (pos + 1 < source.size() && source[pos + 1] == '!') {
                     tokens.push_back({TokenType::ErrorOutput, "<!", line});
                     pos += 2;
+                    column += 2;
+                }
+                else if (pos + 1 < source.size() && source[pos + 1] == '|') {
+                    switch (source[pos + 2]) {
+                        case '#':
+                            tokens.push_back({TokenType::IntegerStackPop, "<|#", line});
+                            break;
+                        case '~':
+                           tokens.push_back({TokenType::FloatStackPop, "<|~", line});
+                           break;
+                        case '@':
+                           tokens.push_back({TokenType::StringStackPop, "<|@", line});
+                           break;
+                        case '%':
+                           tokens.push_back({TokenType::BooleanStackPop, "<|%", line});
+                           break;
+                        default:
+                                addError("Unknown stack pop type '<|" + std::string(1, source[pos + 2]) + "'", getContextAroundPosition());
+                                return tokens;
+                    }
+                    pos += 3;
+                    column += 3;
                 }
                 else {
                     tokens.push_back({TokenType::LAngleBracket, "<", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '>':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::GreaterThanOrEqual, ">=", line});
                     pos += 2;
+                    column += 2;
                 } 
-                else if (pos + 1 < src.size() && src[pos + 1] == '>') {
+                else if (pos + 1 < source.size() && source[pos + 1] == '>') {
                     tokens.push_back({TokenType::DoubleRAngleBracket, ">>", line});
                     pos += 2;
+                    column += 2;
                 }
                 else {
                     tokens.push_back({TokenType::RAngleBracket, ">", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '=':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::EqualTo, "==", line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Assign, "=", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '+':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::PlusEqual, "+=", line});
                     pos += 2;
+                    column += 2;
+                } 
+                else if (pos + 1 < source.size() && source[pos + 1] == '>') {
+                    tokens.push_back({TokenType::MapWindowSlide, "+>", line});
+                    pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Plus, "+", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '-':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::MinusEqual, "-=", line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Minus, "-", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '*':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::MultiplyEqual, "*=", line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Multiply, "*", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '/':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::DivideEqual, "/=", line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Divide, "/", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '#':
-                if (pos + 1 < src.size() && src[pos + 1] == ':') {
+                if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::IntCast, "#:", line});
                     pos += 2;
-                } else {
+                    column += 2;
+                }
+                else {
                     tokens.push_back({TokenType::Hash, "#", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '@':
-                if (pos + 1 < src.size() && src[pos + 1] == ':') {
+                if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::StrCast, "@:", line});
                     pos += 2;
-                } else {
+                    column += 2;
+                }
+                else {
                     tokens.push_back({TokenType::At, "@", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '~':
-                if (pos + 1 < src.size() && src[pos + 1] == ':') {
+                if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::FloatCast, "~:", line});
                     pos += 2;
-                } else {
+                    column += 2;
+                }
+                else {
                     tokens.push_back({TokenType::Tilde, "~", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             case '%':
-                if (pos + 1 < src.size() && src[pos + 1] == ':') {
+                if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::BoolCast, "%:", line});
                     pos += 2;
+                    column += 2;
                 }
-                else if (pos + 1 < src.size() && (src[pos + 1] == '0' || src[pos + 1] == '1')) {
-                    tokens.push_back({TokenType::Boolean, src.substr(pos, 2), line});
+                else if (pos + 1 < source.size() && (source[pos + 1] == '0' || source[pos + 1] == '1')) {
+                    tokens.push_back({TokenType::Boolean, source.substr(pos, 2), line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
-                    if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                    if (pos + 1 < source.size() && source[pos + 1] == '=') {
                         tokens.push_back({TokenType::ModulusEqual, "%=", line});
                         pos += 2;
+                        column += 2;
                     } 
                     else {
                         tokens.push_back({TokenType::Modulus, "%", line});
                         ++pos;
+                        ++column;
                     }
                 }
                 break;
 
             case '|':
-                if (pos + 1 < src.size() && src[pos + 1] == '|') {
+                if (pos + 1 < source.size() && source[pos + 1] == '|') {
                     tokens.push_back({TokenType::Or, "||", line});
                     pos += 2;
+                    column += 2;
                 } 
+                else if (pos + 1 < source.size() && source[pos + 1] == '>') {
+                    switch (source[pos + 2]) {
+                        case '#':
+                            tokens.push_back({TokenType::IntegerStackPush, "|>#", line});
+                            break;
+                        case '~':
+                           tokens.push_back({TokenType::FloatStackPush, "|>~", line});
+                           break;
+                        case '@':
+                           tokens.push_back({TokenType::StringStackPush, "|>@", line});
+                           break;
+                        case '%':
+                           tokens.push_back({TokenType::BooleanStackPush, "|>%", line});
+                           break;
+                        default:
+                            addError("Unknown stack push type '|>" + std::string(1, source[pos + 2]) + "'", getContextAroundPosition());
+                            return tokens;
+                    }
+                    pos += 3;
+                    column += 3;
+                }                 
                 else {
-                    std::cerr << "Error: Unknown character sequence '|" << src[pos + 1] << "'\n";
-                    return {};
+                    addError("Unknown character sequence '|" + std::string(1, source[pos + 1]) + "'", getContextAroundPosition());
+                    return tokens;
                 }
                 break;
             case '!':
-                if (pos + 1 < src.size() && src[pos + 1] == '=') {
+                if (pos + 1 < source.size() && source[pos + 1] == '=') {
                     tokens.push_back({TokenType::NotEqualTo, "!=", line});
                     pos += 2;
+                    column += 2;
                 } 
                 else {
                     tokens.push_back({TokenType::Not, "!", line});
                     ++pos;
+                    ++column;
                 }
                 break;
             default:
                 if (isalpha(c)) {
                     std::string symbol(1, c);
                     ++pos;
-                    while (pos < src.size() && (isalnum(src[pos]) || src[pos] == '_')) {
-                        symbol += src[pos++];
+                    ++column;
+                    while (pos < source.size() && (isalnum(source[pos]) || source[pos] == '_')) {
+                        symbol += source[pos++];
+                        ++column;
                     }
                     tokens.push_back({TokenType::Symbol, symbol, line});
                 } 
                 else {
-                    std::cerr << "Error: Unknown character '" << c << "'\n";
-                    return {};
+                    addError("Unknown character '" + std::string(1, c) + "'", getContextAroundPosition());
+                    return tokens;
                 }
                 break;
         }
@@ -371,10 +505,17 @@ std::vector<Token> tokenize(const std::string& src) {
     return tokens;
 }
 
+// エラー情報を出力
+void Lexer::printErrors() const {
+    for (const auto& error : errors) {
+        std::cerr << error.toString() << std::endl;
+    }
+}
+
 void printTokens(const std::vector<Token>& tokens) {
     for (const auto& token : tokens) {
-        std::cout << "トークン: " << tokenType2String(token.type)
-                  << ", 値: " << token.value 
-                  << ", 行: " << token.line << std::endl;
+        std::cout << "Token: " << tokenType2String(token.type)
+                  << ", Value: " << token.value 
+                  << ", Line: " << token.line << std::endl;
     }
 }

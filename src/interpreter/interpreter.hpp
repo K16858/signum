@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <fstream>
 #include "../ast/ast.hpp"
 
 // 値の型
@@ -20,6 +21,43 @@ constexpr size_t ARGS_START = 48;
 constexpr size_t RETURN_START = 56;
 constexpr size_t SYSTEM_START = 60;
 
+// スタックのサイズ
+constexpr size_t STACK_MAX_SIZE = 1024;
+
+// メモリマップのサイズ
+constexpr size_t MEMORY_MAP_SIZE = 1024;
+
+// メモリマップ管理クラス
+class MemoryMap {
+private:
+    std::string filePath;
+    size_t windowOffset;
+    char mapType; // '#', '@', '~', '%'
+    
+public:
+    MemoryMap() : windowOffset(0), mapType('\0') {}
+    MemoryMap(const std::string& path, char type) : filePath(path), windowOffset(0), mapType(type) {}
+    
+    // ファイルマッピング
+    void mapFile(const std::string& path, char type);
+    
+    // 要素の読み書き
+    Value readElement(size_t index);
+    void writeElement(size_t index, const Value& value);
+    
+    // ウィンドウスライド
+    void slideWindow(int offset);
+    
+    // ファイル初期化・拡張
+    void ensureFileSize();
+    
+    // getter
+    bool isMapped() const { return !filePath.empty(); }
+    size_t getWindowOffset() const { return windowOffset; }
+    const std::string& getFilePath() const { return filePath; }
+    char getMapType() const { return mapType; }
+};
+
 class Interpreter {
 private:
     // 各型のメモリプール
@@ -27,9 +65,21 @@ private:
     std::array<Value, MEMORY_POOL_SIZE> stringPool; // @ (文字列)
     std::array<Value, MEMORY_POOL_SIZE> floatPool;  // ~ (浮動小数点)
     std::array<Value, MEMORY_POOL_SIZE> boolPool;   // % (真偽値)
-    
+
+    // 各型のスタック
+    std::vector<int> intStack;
+    std::vector<double> floatStack;
+    std::vector<std::string> stringStack;
+    std::vector<bool> booleanStack;
+
     // 関数テーブル
     std::unordered_map<int, std::shared_ptr<ASTNode>> functions;
+    
+    // メモリマップ
+    MemoryMap intMemoryMap;    // ^#
+    MemoryMap stringMemoryMap; // ^@
+    MemoryMap floatMemoryMap;  // ^~
+    MemoryMap boolMemoryMap;   // ^%
     
     // メモリ参照を解決する
     Value resolveMemoryRef(const std::string& ref);
@@ -45,6 +95,12 @@ public:
         stringPool.fill("");
         floatPool.fill(0.0);
         boolPool.fill(false);
+
+        // スタックの初期化
+        intStack.reserve(STACK_MAX_SIZE);
+        floatStack.reserve(STACK_MAX_SIZE);
+        stringStack.reserve(STACK_MAX_SIZE);
+        booleanStack.reserve(STACK_MAX_SIZE);
     }
     ~Interpreter() = default;
     
@@ -70,8 +126,14 @@ public:
     Value evaluateOutputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateFileInputStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateFileOutputStatement(const std::shared_ptr<ASTNode>& node);
+    Value evaluateStackOperation(const std::shared_ptr<ASTNode>& node);
+    Value evaluateMemoryMapRef(const std::shared_ptr<ASTNode>& node);
+    Value evaluateMapWindowSlide(const std::shared_ptr<ASTNode>& node);
     
     // 変数の取得と設定
     Value getMemoryValue(char type, int index);
     void setMemoryValue(char type, int index, const Value& value);
+    
+    // メモリマップの取得
+    MemoryMap& getMemoryMap(char type);
 };
