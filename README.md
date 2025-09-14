@@ -25,3 +25,7 @@ signum program.sgnm
 ```
 signum
 ```
+
+# チュートリアル & リファレンス
+- [チュートリアル](./docs/tutorial.md)
+- [リファレンス](./docs/reference.md)
