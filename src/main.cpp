@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     }
     // バージョン情報を表示
     else if (arg == "-v" || arg == "--version") {
-        std::cout << "SigNum Interpreter Version 0.2.0 alpha" << std::endl;
+        std::cout << "SigNum Interpreter Version 1.0.0 beta" << std::endl;
         return 0;
     }
     // デバッグモードを有効にする
