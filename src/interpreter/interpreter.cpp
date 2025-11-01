@@ -330,6 +330,12 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateComparison(node);
         case NodeType::Cast:
             return evaluateCast(node);
+        case NodeType::CharCodeCast:
+            return evaluateCharCodeCast(node);
+        case NodeType::StringIndex:
+            return evaluateStringIndex(node);
+        case NodeType::StringLength:
+            return evaluateStringLength(node);
         case NodeType::IfStatement:
             return evaluateIfStatement(node);
         case NodeType::LoopStatement:
@@ -348,6 +354,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateMemoryMapRef(node);
         case NodeType::MapWindowSlide:
             return evaluateMapWindowSlide(node);
+        case NodeType::Error:
+            throw std::runtime_error("Parse error encountered: " + node->value);
         default:
             throw std::runtime_error("Unknown node type: " + std::to_string(static_cast<int>(node->type)));
     }
@@ -708,6 +716,86 @@ Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
     }
 
     throw std::runtime_error("Invalid cast: " + node->toJSON());
+}
+
+// 文字コード変換ノード評価
+Value Interpreter::evaluateCharCodeCast(const std::shared_ptr<ASTNode>& node) {
+    Value value = evaluateNode(node->children[0]);
+    std::string castType = node->value;
+
+    if (castType == "charToInt") {
+        if (std::holds_alternative<std::string>(value)) {
+            std::string str = std::get<std::string>(value);
+            if (str.length() == 1) {
+                return static_cast<int>(static_cast<unsigned char>(str[0]));
+            }
+            throw std::runtime_error("Character code cast requires single character, got: " + str);
+        }
+        throw std::runtime_error("Character code cast (charToInt) requires string type");
+    }
+    else if (castType == "intToChar") {
+        if (std::holds_alternative<int>(value)) {
+            int code = std::get<int>(value);
+            if (code >= 0 && code <= 127) {  // ASCII範囲
+                char c = static_cast<char>(code);
+                return std::string(1, c);
+            }
+            throw std::runtime_error("Character code must be in range 0-127, got: " + std::to_string(code));
+        }
+        throw std::runtime_error("Character code cast (intToChar) requires int type");
+    }
+
+    throw std::runtime_error("Invalid character code cast: " + node->toJSON());
+}
+
+// インデックスアクセスノード評価
+Value Interpreter::evaluateStringIndex(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.size() < 2) {
+        throw std::runtime_error("String index requires memory reference and index");
+    }
+    
+    // メモリ参照を評価
+    Value memValue = evaluateNode(node->children[0]);
+    
+    // インデックスを評価
+    Value indexValue = evaluateNode(node->children[1]);
+    
+    if (!std::holds_alternative<std::string>(memValue)) {
+        throw std::runtime_error("String index can only be used on string type");
+    }
+    
+    if (!std::holds_alternative<int>(indexValue)) {
+        throw std::runtime_error("String index must be integer type");
+    }
+    
+    std::string str = std::get<std::string>(memValue);
+    int index = std::get<int>(indexValue);
+    
+    // 範囲チェック
+    if (index < 0 || index >= static_cast<int>(str.length())) {
+        throw std::out_of_range("String index out of range: " + std::to_string(index) + 
+                                " (string length: " + std::to_string(str.length()) + ")");
+    }
+    
+    // 1文字を文字列として返す
+    return std::string(1, str[index]);
+}
+
+// 文字列長取得ノード評価
+Value Interpreter::evaluateStringLength(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.empty()) {
+        throw std::runtime_error("String length requires an expression");
+    }
+    
+    // 式を評価
+    Value value = evaluateNode(node->children[0]);
+    
+    if (!std::holds_alternative<std::string>(value)) {
+        throw std::runtime_error("String length can only be used on string type");
+    }
+    
+    std::string str = std::get<std::string>(value);
+    return static_cast<int>(str.length());
 }
 
 // if文ノード評価

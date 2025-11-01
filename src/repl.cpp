@@ -1,11 +1,12 @@
 #include "repl.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
+#include "version.hpp"
 #include <iostream>
 #include <string>
 
 void REPL::start() {
-    std::cout << "Welcome to the SigNum 1.0.0 REPL!" << std::endl;
+    std::cout << "Welcome to the " << SigNum::getVersionString() << " REPL!" << std::endl;
     std::cout << "Type '.help' for a list of commands." << std::endl;
 
     running = true;

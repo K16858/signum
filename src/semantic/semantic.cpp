@@ -101,6 +101,18 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // 型変換
             return checkCast(node);
         
+        case NodeType::CharCodeCast:
+            // 文字コード変換
+            return checkCharCodeCast(node);
+        
+        case NodeType::StringIndex:
+            // 文字列インデックスアクセス
+            return checkStringIndex(node);
+        
+        case NodeType::StringLength:
+            // 文字列長取得
+            return checkStringLength(node);
+        
         case NodeType::Comparison:
             checkCondition(node);
             return MemoryType::Boolean;
@@ -432,6 +444,78 @@ MemoryType SemanticAnalyzer::checkCast(const ASTNode* node) {
         reportError("Unknown cast type: " + castType);
         return MemoryType::Integer;
     }
+}
+
+// 文字コード変換のチェック
+MemoryType SemanticAnalyzer::checkCharCodeCast(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("Empty character code cast expression");
+        return MemoryType::Integer;
+    }
+    
+    // 変換対象の式をチェック
+    MemoryType sourceType = visitNode(node->children[0].get());
+    
+    // 変換の種類を取得
+    std::string castType = node->value;
+    if (castType == "charToInt") {
+        // 文字列 → 整数
+        if (sourceType != MemoryType::String) {
+            reportError("Character to int cast expects string type");
+        }
+        return MemoryType::Integer;
+    }
+    else if (castType == "intToChar") {
+        // 整数 → 文字列
+        if (sourceType != MemoryType::Integer) {
+            reportError("Int to character cast expects integer type");
+        }
+        return MemoryType::String;
+    }
+    else {
+        reportError("Unknown character code cast type: " + castType);
+        return MemoryType::Integer;
+    }
+}
+
+// インデックスアクセスのチェック
+MemoryType SemanticAnalyzer::checkStringIndex(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("String index requires memory reference and index expression");
+        return MemoryType::String;
+    }
+    
+    // メモリ参照の型をチェック
+    MemoryType memType = visitNode(node->children[0].get());
+    if (memType != MemoryType::String) {
+        reportError("String index can only be used on string type memory");
+    }
+    
+    // インデックス式の型をチェック
+    MemoryType indexType = visitNode(node->children[1].get());
+    if (indexType != MemoryType::Integer) {
+        reportError("String index must be integer type");
+    }
+    
+    // 結果は1文字の文字列
+    return MemoryType::String;
+}
+
+// 文字列長取得のチェック
+MemoryType SemanticAnalyzer::checkStringLength(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("String length requires an expression");
+        return MemoryType::Integer;
+    }
+    
+    // 式の型をチェック
+    MemoryType exprType = visitNode(node->children[0].get());
+    if (exprType != MemoryType::String) {
+        reportError("String length can only be used on string type");
+    }
+    
+    // 結果は整数
+    return MemoryType::Integer;
 }
 
 // 関数定義のチェック

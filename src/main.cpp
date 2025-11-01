@@ -6,6 +6,7 @@
 #include "semantic/semantic.hpp"
 #include "interpreter/interpreter.hpp"
 #include "repl.hpp"
+#include "version.hpp"
 
 struct DebugConfig {
     bool debugMode = false;
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]) {
     }
     // バージョン情報を表示
     else if (arg == "-v" || arg == "--version") {
-        std::cout << "SigNum Interpreter Version 1.0.0 beta" << std::endl;
+        std::cout << SigNum::getVersionString() << std::endl;
         return 0;
     }
     // デバッグモードを有効にする

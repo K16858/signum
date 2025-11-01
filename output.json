@@ -1,0 +1,92 @@
+{
+  "type": "ProgramRoot",
+  "value": "",
+  "children": [
+    {
+    "type": "Assignment",
+    "value": "=",
+    "children": [
+      {
+      "type": "MemoryRef",
+      "value": "$@0"
+    },
+      {
+      "type": "String",
+      "value": "1"
+    }
+    ]
+  },
+    {
+    "type": "OutputStatement",
+    "value": "",
+    "children": [
+      {
+      "type": "MemoryRef",
+      "value": "$@0"
+    }
+    ]
+  },
+    {
+    "type": "Assignment",
+    "value": "=",
+    "children": [
+      {
+      "type": "MemoryRef",
+      "value": "$#0"
+    },
+      {
+      "type": "CharCodeCast",
+      "value": "charToInt",
+      "children": [
+        {
+        "type": "MemoryRef",
+        "value": "$@0"
+      }
+      ]
+    }
+    ]
+  },
+    {
+    "type": "OutputStatement",
+    "value": "",
+    "children": [
+      {
+      "type": "MemoryRef",
+      "value": "$#0"
+    }
+    ]
+  },
+    {
+    "type": "OutputStatement",
+    "value": "",
+    "children": [
+      {
+      "type": "CharCodeCast",
+      "value": "intToChar",
+      "children": [
+        {
+        "type": "MemoryRef",
+        "value": "$#0"
+      }
+      ]
+    }
+    ]
+  },
+    {
+    "type": "OutputStatement",
+    "value": "",
+    "children": [
+      {
+      "type": "CharCodeCast",
+      "value": "intToChar",
+      "children": [
+        {
+        "type": "Number",
+        "value": "50"
+      }
+      ]
+    }
+    ]
+  }
+  ]
+}

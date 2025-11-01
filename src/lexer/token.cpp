@@ -26,6 +26,7 @@ std::string tokenType2String(TokenType type) {
         case TokenType::ErrorOutput: return "<!";           // エラー出力
         case TokenType::Comma: return ",";                  // カンマ
         case TokenType::Colon: return ":";                  // コロン
+        case TokenType::DoubleColon: return "::";           // ダブルコロン
         case TokenType::Semicolon: return ";";              // セミコロン
         case TokenType::If: return "if";                    // if
         case TokenType::ElseIf: return "elseif";            // elseif
@@ -45,6 +46,7 @@ std::string tokenType2String(TokenType type) {
         case TokenType::And: return "And";                  // 論理積
         case TokenType::Or: return "Or";                    // 論理和
         case TokenType::Not: return "Not";                  // 否定
+        case TokenType::Pipe: return "|";                   // パイプ
         case TokenType::LessThanOrEqual: return "<=";       // 以下
         case TokenType::GreaterThanOrEqual: return ">=";    // 以上
         case TokenType::EqualTo: return "==";               // 等価
@@ -53,6 +55,8 @@ std::string tokenType2String(TokenType type) {
         case TokenType::FloatCast: return "FloatCast";      // 浮動小数点キャスト
         case TokenType::StrCast: return "StrCast";          // 文字列キャスト
         case TokenType::BoolCast: return "BoolCast";        // ブールキャスト
+        case TokenType::CharCodeToInt: return "CharCodeToInt";    // 文字コード→整数
+        case TokenType::IntToCharCode: return "IntToCharCode";    // 整数→文字コード
         case TokenType::Hash: return "#";                   // ハッシュ
         case TokenType::At: return "@";                     // アットマーク
         case TokenType::Dollar: return "$";                 // ドル
