@@ -1,6 +1,7 @@
 // SigNum Interpreter
 
-# include "interpreter.hpp"
+#include <cstdint>
+#include "interpreter.hpp"
 
 // MemoryMapクラス
 // ファイルマッピング
