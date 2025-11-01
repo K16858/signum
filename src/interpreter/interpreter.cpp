@@ -751,10 +751,11 @@ Value Interpreter::evaluateLoopStatement(const std::shared_ptr<ASTNode>& node) {
 // 入力文ノード評価
 Value Interpreter::evaluateInputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string varName = node->children[0]->value;
+    int startPos = (varName[0] == '$') ? 1 : 0;
     std::string input;
     std::cout << "Input " << varName << ": ";
     std::cin >> input;
-    setMemoryValue(varName[0], evaluateMemoryIndex(varName), input);
+    setMemoryValue(varName[startPos], evaluateMemoryIndex(varName), input);
     return Value();
 }
 
