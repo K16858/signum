@@ -25,6 +25,7 @@ enum class NodeType {
     Comparison,
     Condition,
     Cast,
+    CharCodeCast,
     IfStatement,
     LoopStatement,
     Assignment,

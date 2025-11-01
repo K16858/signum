@@ -20,6 +20,7 @@ std::string nodeType2String(NodeType type) {
         case NodeType::Comparison: return "Comparison";
         case NodeType::Condition: return "Condition";
         case NodeType::Cast: return "Cast";
+        case NodeType::CharCodeCast: return "CharCodeCast";
         case NodeType::IfStatement: return "IfStatement";
         case NodeType::LoopStatement: return "LoopStatement";
         case NodeType::Assignment: return "Assignment";
