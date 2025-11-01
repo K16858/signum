@@ -122,6 +122,7 @@ public:
     Value evaluateCast(const std::shared_ptr<ASTNode>& node);
     Value evaluateCharCodeCast(const std::shared_ptr<ASTNode>& node);
     Value evaluateStringIndex(const std::shared_ptr<ASTNode>& node);
+    Value evaluateStringLength(const std::shared_ptr<ASTNode>& node);
     Value evaluateIfStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateLoopStatement(const std::shared_ptr<ASTNode>& node);
     Value evaluateInputStatement(const std::shared_ptr<ASTNode>& node);

@@ -334,6 +334,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateCharCodeCast(node);
         case NodeType::StringIndex:
             return evaluateStringIndex(node);
+        case NodeType::StringLength:
+            return evaluateStringLength(node);
         case NodeType::IfStatement:
             return evaluateIfStatement(node);
         case NodeType::LoopStatement:
@@ -777,6 +779,23 @@ Value Interpreter::evaluateStringIndex(const std::shared_ptr<ASTNode>& node) {
     
     // 1文字を文字列として返す
     return std::string(1, str[index]);
+}
+
+// 文字列長取得ノード評価
+Value Interpreter::evaluateStringLength(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.empty()) {
+        throw std::runtime_error("String length requires an expression");
+    }
+    
+    // 式を評価
+    Value value = evaluateNode(node->children[0]);
+    
+    if (!std::holds_alternative<std::string>(value)) {
+        throw std::runtime_error("String length can only be used on string type");
+    }
+    
+    std::string str = std::get<std::string>(value);
+    return static_cast<int>(str.length());
 }
 
 // if文ノード評価
