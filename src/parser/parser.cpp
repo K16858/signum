@@ -173,8 +173,14 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
         case TokenType::IntCast:
         case TokenType::FloatCast:
         case TokenType::StrCast:
-        case TokenType::BoolCast:
-            return parseCast(); // 型変換の解析
+        case TokenType::BoolCast: {
+            auto castNode = parseCast(); // 型変換の解析
+            // 単独ステートメントとして使われる場合はセミコロンを処理
+            if (pos < tokens.size() && tokens[pos].type == TokenType::Semicolon) {
+                advance();
+            }
+            return castNode;
+        }
 
         // スライド操作
         case TokenType::Integer:
@@ -848,12 +854,6 @@ std::shared_ptr<ASTNode> Parser::parseCast() {
     }
     node->children.push_back(std::move(expr));
     
-    // セミコロンチェック
-    if (tokens[pos].type != TokenType::Semicolon) {
-        return recoverFromError("Expected ';' after cast expression");
-    }
-    advance(); // セミコロンをスキップ
-
     return node;
 }
 

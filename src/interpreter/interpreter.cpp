@@ -348,6 +348,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateMemoryMapRef(node);
         case NodeType::MapWindowSlide:
             return evaluateMapWindowSlide(node);
+        case NodeType::Error:
+            throw std::runtime_error("Parse error encountered: " + node->value);
         default:
             throw std::runtime_error("Unknown node type: " + std::to_string(static_cast<int>(node->type)));
     }
