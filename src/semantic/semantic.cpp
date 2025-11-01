@@ -109,6 +109,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // 文字列インデックスアクセス
             return checkStringIndex(node);
         
+        case NodeType::StringLength:
+            // 文字列長取得
+            return checkStringLength(node);
+        
         case NodeType::Comparison:
             checkCondition(node);
             return MemoryType::Boolean;
@@ -495,6 +499,23 @@ MemoryType SemanticAnalyzer::checkStringIndex(const ASTNode* node) {
     
     // 結果は1文字の文字列
     return MemoryType::String;
+}
+
+// 文字列長取得のチェック
+MemoryType SemanticAnalyzer::checkStringLength(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("String length requires an expression");
+        return MemoryType::Integer;
+    }
+    
+    // 式の型をチェック
+    MemoryType exprType = visitNode(node->children[0].get());
+    if (exprType != MemoryType::String) {
+        reportError("String length can only be used on string type");
+    }
+    
+    // 結果は整数
+    return MemoryType::Integer;
 }
 
 // 関数定義のチェック

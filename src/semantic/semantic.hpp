@@ -78,8 +78,11 @@ private:
     // 文字コード変換のチェック
     MemoryType checkCharCodeCast(const ASTNode* node);
     
-    // インデックスアクセスのチェック
+    // 文字列インデックスアクセスのチェック
     MemoryType checkStringIndex(const ASTNode* node);
+    
+    // 文字列長取得のチェック
+    MemoryType checkStringLength(const ASTNode* node);
     
     // 関数定義のチェック
     void checkFunctionDefinition(const ASTNode* node);
@@ -114,4 +117,3 @@ private:
     // 関数定義を集める（1パス目）
     void collectFunctionDefinitions(const ASTNode* node);
 };
-
