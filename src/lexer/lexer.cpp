@@ -211,9 +211,15 @@ std::vector<Token> Lexer::tokenize() {
                 ++column;
                 break;
             case ':':
-                tokens.push_back({TokenType::Colon, ":", line});
-                ++pos;
-                ++column;
+                if (pos + 1 < source.size() && source[pos + 1] == ':') {
+                    tokens.push_back({TokenType::DoubleColon, "::", line});
+                    pos += 2;
+                    column += 2;
+                } else {
+                    tokens.push_back({TokenType::Colon, ":", line});
+                    ++pos;
+                    ++column;
+                }
                 break;
             case '&':
                 if (pos + 1 < source.size()) {
@@ -377,7 +383,12 @@ std::vector<Token> Lexer::tokenize() {
                 }
                 break;
             case '#':
-                if (pos + 1 < source.size() && source[pos + 1] == ':') {
+                if (pos + 2 < source.size() && source[pos + 1] == ':' && source[pos + 2] == ':') {
+                    tokens.push_back({TokenType::CharCodeToInt, "#::", line});
+                    pos += 3;
+                    column += 3;
+                }
+                else if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::IntCast, "#:", line});
                     pos += 2;
                     column += 2;
@@ -389,7 +400,12 @@ std::vector<Token> Lexer::tokenize() {
                 }
                 break;
             case '@':
-                if (pos + 1 < source.size() && source[pos + 1] == ':') {
+                if (pos + 2 < source.size() && source[pos + 1] == ':' && source[pos + 2] == ':') {
+                    tokens.push_back({TokenType::IntToCharCode, "@::", line});
+                    pos += 3;
+                    column += 3;
+                }
+                else if (pos + 1 < source.size() && source[pos + 1] == ':') {
                     tokens.push_back({TokenType::StrCast, "@:", line});
                     pos += 2;
                     column += 2;
