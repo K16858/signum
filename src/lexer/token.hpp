@@ -47,6 +47,7 @@ enum class TokenType {
     And,
     Or,
     Not,
+    Pipe,
     LessThanOrEqual,
     GreaterThanOrEqual,
     EqualTo,

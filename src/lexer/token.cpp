@@ -46,6 +46,7 @@ std::string tokenType2String(TokenType type) {
         case TokenType::And: return "And";                  // 論理積
         case TokenType::Or: return "Or";                    // 論理和
         case TokenType::Not: return "Not";                  // 否定
+        case TokenType::Pipe: return "|";                   // パイプ
         case TokenType::LessThanOrEqual: return "<=";       // 以下
         case TokenType::GreaterThanOrEqual: return ">=";    // 以上
         case TokenType::EqualTo: return "==";               // 等価

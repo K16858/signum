@@ -481,8 +481,9 @@ std::vector<Token> Lexer::tokenize() {
                     column += 3;
                 }                 
                 else {
-                    addError("Unknown character sequence '|" + std::string(1, source[pos + 1]) + "'", getContextAroundPosition());
-                    return tokens;
+                    tokens.push_back({TokenType::Pipe, "|", line});
+                    ++pos;
+                    ++column;
                 }
                 break;
             case '!':
