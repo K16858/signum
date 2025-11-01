@@ -294,7 +294,6 @@ std::shared_ptr<ASTNode> Parser::parseTerm() {
 std::shared_ptr<ASTNode> Parser::parseFactor() {
     debugLog("因子を解析中...");
 
-    // 範囲チェック
     if (pos >= tokens.size()) {
         return recoverFromError("Unexpected end of input");
     }
