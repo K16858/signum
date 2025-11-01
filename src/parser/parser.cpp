@@ -212,6 +212,29 @@ std::shared_ptr<ASTNode> Parser::parseMemoryRef() {
     if (tokens[pos].type == TokenType::MemoryRef) {
         auto node = std::make_shared<ASTNode>(NodeType::MemoryRef, tokens[pos].value);
         advance();
+        
+        // インデックスアクセスをチェック
+        if (pos < tokens.size() && tokens[pos].type == TokenType::LBracket) {
+            advance(); // '[' をスキップ
+            
+            auto indexNode = std::make_shared<ASTNode>(NodeType::StringIndex, "[]");
+            indexNode->children.push_back(node); // メモリ参照
+            
+            // インデックス式を解析
+            auto indexExpr = parseExpression();
+            if (!indexExpr) {
+                return recoverFromError("Expected expression for index");
+            }
+            indexNode->children.push_back(indexExpr);
+            
+            if (tokens[pos].type != TokenType::RBracket) {
+                return recoverFromError("Expected ']' after index expression");
+            }
+            advance(); // ']' をスキップ
+            
+            return indexNode;
+        }
+        
         return node;
     }
 
