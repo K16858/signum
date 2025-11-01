@@ -27,6 +27,7 @@ enum class NodeType {
     Cast,
     CharCodeCast,
     StringIndex,
+    StringLength,
     IfStatement,
     LoopStatement,
     Assignment,
