@@ -588,25 +588,11 @@ std::shared_ptr<ASTNode> Parser::parseOutputStatement() {
     advance(); // "<" をスキップ
     
     // 出力する式を解析
-    if (tokens[pos].type == TokenType::MemoryRef) {
-        auto ref = parseMemoryRef();
-        if (!ref) {
-            return recoverFromError("Expected memory reference in output statement");
-        }
-        node->children.push_back(std::move(ref));
-    } 
-    else if (tokens[pos].type == TokenType::String) {
-        auto strNode = std::make_shared<ASTNode>(NodeType::String, tokens[pos].value);
-        advance(); // 文字列をスキップ
-        node->children.push_back(std::move(strNode));
-    } 
-    else {
-        auto expr = parseExpression();
-        if (!expr) {
-            return recoverFromError("Expected expression in output statement");
-        }
-        node->children.push_back(std::move(expr));
+    auto expr = parseExpression();
+    if (!expr) {
+        return recoverFromError("Expected expression in output statement");
     }
+    node->children.push_back(std::move(expr));
     
     if (tokens[pos].type != TokenType::Semicolon) {
         return recoverFromError("Expected ';' after output statement");

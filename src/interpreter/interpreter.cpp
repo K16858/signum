@@ -1,6 +1,7 @@
 // SigNum Interpreter
 
-# include "interpreter.hpp"
+#include <cstdint>
+#include "interpreter.hpp"
 
 // MemoryMapクラス
 // ファイルマッピング
@@ -750,10 +751,32 @@ Value Interpreter::evaluateLoopStatement(const std::shared_ptr<ASTNode>& node) {
 // 入力文ノード評価
 Value Interpreter::evaluateInputStatement(const std::shared_ptr<ASTNode>& node) {
     std::string varName = node->children[0]->value;
+    int startPos = (varName[0] == '$') ? 1 : 0;
+    char memType = varName[startPos];
     std::string input;
     std::cout << "Input " << varName << ": ";
     std::cin >> input;
-    setMemoryValue(varName[0], evaluateMemoryIndex(varName), input);
+    
+    // メモリタイプに応じて適切な型に変換
+    Value convertedValue;
+    switch (memType) {
+        case '#': // int
+            convertedValue = std::stoi(input);
+            break;
+        case '~': // double
+            convertedValue = std::stod(input);
+            break;
+        case '%': // bool
+            convertedValue = (input == "true" || input == "1");
+            break;
+        case '@': // string
+            convertedValue = input;
+            break;
+        default:
+            throw std::runtime_error("Unknown memory type for input: " + std::string(1, memType));
+    }
+    
+    setMemoryValue(memType, evaluateMemoryIndex(varName), convertedValue);
     return Value();
 }
 
