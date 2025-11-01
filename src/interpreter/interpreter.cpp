@@ -332,6 +332,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateCast(node);
         case NodeType::CharCodeCast:
             return evaluateCharCodeCast(node);
+        case NodeType::StringIndex:
+            return evaluateStringIndex(node);
         case NodeType::IfStatement:
             return evaluateIfStatement(node);
         case NodeType::LoopStatement:
@@ -742,6 +744,39 @@ Value Interpreter::evaluateCharCodeCast(const std::shared_ptr<ASTNode>& node) {
     }
 
     throw std::runtime_error("Invalid character code cast: " + node->toJSON());
+}
+
+// インデックスアクセスノード評価
+Value Interpreter::evaluateStringIndex(const std::shared_ptr<ASTNode>& node) {
+    if (node->children.size() < 2) {
+        throw std::runtime_error("String index requires memory reference and index");
+    }
+    
+    // メモリ参照を評価
+    Value memValue = evaluateNode(node->children[0]);
+    
+    // インデックスを評価
+    Value indexValue = evaluateNode(node->children[1]);
+    
+    if (!std::holds_alternative<std::string>(memValue)) {
+        throw std::runtime_error("String index can only be used on string type");
+    }
+    
+    if (!std::holds_alternative<int>(indexValue)) {
+        throw std::runtime_error("String index must be integer type");
+    }
+    
+    std::string str = std::get<std::string>(memValue);
+    int index = std::get<int>(indexValue);
+    
+    // 範囲チェック
+    if (index < 0 || index >= static_cast<int>(str.length())) {
+        throw std::out_of_range("String index out of range: " + std::to_string(index) + 
+                                " (string length: " + std::to_string(str.length()) + ")");
+    }
+    
+    // 1文字を文字列として返す
+    return std::string(1, str[index]);
 }
 
 // if文ノード評価
