@@ -101,6 +101,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // 型変換
             return checkCast(node);
         
+        case NodeType::CharCodeCast:
+            // 文字コード変換
+            return checkCharCodeCast(node);
+        
         case NodeType::Comparison:
             checkCondition(node);
             return MemoryType::Boolean;
@@ -430,6 +434,38 @@ MemoryType SemanticAnalyzer::checkCast(const ASTNode* node) {
     else if (castType == "bool") return MemoryType::Boolean;
     else {
         reportError("Unknown cast type: " + castType);
+        return MemoryType::Integer;
+    }
+}
+
+// 文字コード変換のチェック
+MemoryType SemanticAnalyzer::checkCharCodeCast(const ASTNode* node) {
+    if (node->children.empty()) {
+        reportError("Empty character code cast expression");
+        return MemoryType::Integer;
+    }
+    
+    // 変換対象の式をチェック
+    MemoryType sourceType = visitNode(node->children[0].get());
+    
+    // 変換の種類を取得
+    std::string castType = node->value;
+    if (castType == "charToInt") {
+        // 文字列 → 整数
+        if (sourceType != MemoryType::String) {
+            reportError("Character to int cast expects string type");
+        }
+        return MemoryType::Integer;
+    }
+    else if (castType == "intToChar") {
+        // 整数 → 文字列
+        if (sourceType != MemoryType::Integer) {
+            reportError("Int to character cast expects integer type");
+        }
+        return MemoryType::String;
+    }
+    else {
+        reportError("Unknown character code cast type: " + castType);
         return MemoryType::Integer;
     }
 }

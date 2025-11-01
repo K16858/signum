@@ -75,6 +75,9 @@ private:
     // キャストのチェック
     MemoryType checkCast(const ASTNode* node);
     
+    // 文字コード変換のチェック
+    MemoryType checkCharCodeCast(const ASTNode* node);
+    
     // 関数定義のチェック
     void checkFunctionDefinition(const ASTNode* node);
     
