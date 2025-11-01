@@ -333,6 +333,25 @@ std::shared_ptr<ASTNode> Parser::parseFactor() {
         debugLog("文字コード変換を解析中...");
         node = parseCharCodeCast();
     }
+    else if (tokens[pos].type == TokenType::Pipe) {
+        debugLog("文字列長取得を解析中...");
+        advance(); // 最初の '|' をスキップ
+        
+        // メモリ参照を解析
+        auto memRef = parseExpression();
+        if (!memRef) {
+            return recoverFromError("Expected expression for string length");
+        }
+        
+        if (tokens[pos].type != TokenType::Pipe) {
+            return recoverFromError("Expected '|' after expression for string length");
+        }
+        advance(); // 2つ目の '|' をスキップ
+        
+        auto lengthNode = std::make_shared<ASTNode>(NodeType::StringLength, "length");
+        lengthNode->children.push_back(memRef);
+        node = lengthNode;
+    }
     else {
         return recoverFromError("Error: Expected factor");
     }
