@@ -76,6 +76,9 @@ public:
     // 型変換の解析
     std::shared_ptr<ASTNode> parseCast();
 
+    // 文字コード変換の解析
+    std::shared_ptr<ASTNode> parseCharCodeCast();
+
     // スタック操作の解析
     std::shared_ptr<ASTNode> parseStackOperation();
 

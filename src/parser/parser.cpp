@@ -305,6 +305,11 @@ std::shared_ptr<ASTNode> Parser::parseFactor() {
         debugLog("型変換を解析中...");
         node = parseCast();
     }
+    else if (tokens[pos].type == TokenType::CharCodeToInt ||
+        tokens[pos].type == TokenType::IntToCharCode) {
+        debugLog("文字コード変換を解析中...");
+        node = parseCharCodeCast();
+    }
     else {
         return recoverFromError("Error: Expected factor");
     }
@@ -851,6 +856,31 @@ std::shared_ptr<ASTNode> Parser::parseCast() {
     auto expr = parseExpression();
     if (!expr) {
         return recoverFromError("Expected expression for cast");
+    }
+    node->children.push_back(std::move(expr));
+    
+    return node;
+}
+
+// 文字コード変換の解析
+std::shared_ptr<ASTNode> Parser::parseCharCodeCast() {
+    debugLog("文字コード変換を解析中...");
+    
+    // 変換種類を保存
+    std::string castType;
+    if (tokens[pos].type == TokenType::CharCodeToInt) castType = "charToInt";
+    else if (tokens[pos].type == TokenType::IntToCharCode) castType = "intToChar";
+    else {
+        return recoverFromError("Expected char code cast type");
+    }
+    
+    auto node = std::make_shared<ASTNode>(NodeType::CharCodeCast, castType);
+    advance(); // キャストトークンをスキップ
+    
+    // 変換する対象の式
+    auto expr = parseExpression();
+    if (!expr) {
+        return recoverFromError("Expected expression for char code cast");
     }
     node->children.push_back(std::move(expr));
     
