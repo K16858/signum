@@ -330,6 +330,8 @@ Value Interpreter::evaluateNode(const std::shared_ptr<ASTNode>& node) {
             return evaluateComparison(node);
         case NodeType::Cast:
             return evaluateCast(node);
+        case NodeType::CharCodeCast:
+            return evaluateCharCodeCast(node);
         case NodeType::IfStatement:
             return evaluateIfStatement(node);
         case NodeType::LoopStatement:
@@ -710,6 +712,36 @@ Value Interpreter::evaluateCast(const std::shared_ptr<ASTNode>& node) {
     }
 
     throw std::runtime_error("Invalid cast: " + node->toJSON());
+}
+
+// 文字コード変換ノード評価
+Value Interpreter::evaluateCharCodeCast(const std::shared_ptr<ASTNode>& node) {
+    Value value = evaluateNode(node->children[0]);
+    std::string castType = node->value;
+
+    if (castType == "charToInt") {
+        if (std::holds_alternative<std::string>(value)) {
+            std::string str = std::get<std::string>(value);
+            if (str.length() == 1) {
+                return static_cast<int>(static_cast<unsigned char>(str[0]));
+            }
+            throw std::runtime_error("Character code cast requires single character, got: " + str);
+        }
+        throw std::runtime_error("Character code cast (charToInt) requires string type");
+    }
+    else if (castType == "intToChar") {
+        if (std::holds_alternative<int>(value)) {
+            int code = std::get<int>(value);
+            if (code >= 0 && code <= 127) {  // ASCII範囲
+                char c = static_cast<char>(code);
+                return std::string(1, c);
+            }
+            throw std::runtime_error("Character code must be in range 0-127, got: " + std::to_string(code));
+        }
+        throw std::runtime_error("Character code cast (intToChar) requires int type");
+    }
+
+    throw std::runtime_error("Invalid character code cast: " + node->toJSON());
 }
 
 // if文ノード評価
