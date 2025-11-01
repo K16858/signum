@@ -78,6 +78,9 @@ private:
     // 文字コード変換のチェック
     MemoryType checkCharCodeCast(const ASTNode* node);
     
+    // インデックスアクセスのチェック
+    MemoryType checkStringIndex(const ASTNode* node);
+    
     // 関数定義のチェック
     void checkFunctionDefinition(const ASTNode* node);
     

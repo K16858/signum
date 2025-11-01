@@ -105,6 +105,10 @@ MemoryType SemanticAnalyzer::visitNode(const ASTNode* node) {
             // 文字コード変換
             return checkCharCodeCast(node);
         
+        case NodeType::StringIndex:
+            // 文字列インデックスアクセス
+            return checkStringIndex(node);
+        
         case NodeType::Comparison:
             checkCondition(node);
             return MemoryType::Boolean;
@@ -468,6 +472,29 @@ MemoryType SemanticAnalyzer::checkCharCodeCast(const ASTNode* node) {
         reportError("Unknown character code cast type: " + castType);
         return MemoryType::Integer;
     }
+}
+
+// インデックスアクセスのチェック
+MemoryType SemanticAnalyzer::checkStringIndex(const ASTNode* node) {
+    if (node->children.size() < 2) {
+        reportError("String index requires memory reference and index expression");
+        return MemoryType::String;
+    }
+    
+    // メモリ参照の型をチェック
+    MemoryType memType = visitNode(node->children[0].get());
+    if (memType != MemoryType::String) {
+        reportError("String index can only be used on string type memory");
+    }
+    
+    // インデックス式の型をチェック
+    MemoryType indexType = visitNode(node->children[1].get());
+    if (indexType != MemoryType::Integer) {
+        reportError("String index must be integer type");
+    }
+    
+    // 結果は1文字の文字列
+    return MemoryType::String;
 }
 
 // 関数定義のチェック
